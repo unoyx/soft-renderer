@@ -22,6 +22,7 @@ public:
     }
 };
 
+// 行向量
 class Vector2
 {
 public:
@@ -142,6 +143,12 @@ public:
             float y;
             float z;
         };
+        struct
+        {
+            float r;
+            float g;
+            float b;
+        };
         float m[ELE_SIZE];
     };
 
@@ -163,7 +170,7 @@ public:
         z = 0.0f;
     }
 
-    Vector3 operator-(void)
+    Vector3 operator-(void) const
     {
         return Vector3(-x, -y, -z);
     }
@@ -210,15 +217,23 @@ public:
         return Vector3(x - v.x, y - v.y, z - v.z);
     }
 
+    Vector3 operator*(const Vector3& v) const
+    {
+        return Vector3(x * v.x, y * v.y, z * v.z);
+    }
+    
+    Vector3 CrossProduct(const Vector3& v) const
+    {
+        return Vector3(y * v.z - z * v.y,
+                       z * v.x - x * v.z,
+                       x * v.y - y * v.z);
+    }
+
     Vector3 operator*(float s) const
     {
         return Vector3(x * s, y * s, z * s);
     }
 
-    Vector3 operator*(Vector3 v) const
-    {
-        return Vector3(x * v.x, y * v.y, z * v.z);
-    }
 
     Vector3 operator/(float d) const
     {
@@ -227,7 +242,7 @@ public:
 
     void Normalize(void)
     {
-        float mag_sq = x * x + y * y;
+        float mag_sq = x * x + y * y + z * z;
         if (mag_sq > 0)
         {
             float one_over_mag = 1.0f / sqrtf(mag_sq);
@@ -240,7 +255,7 @@ public:
     void Display(void)
     {
         Logger::GtLogInfo("Vector3 content:");
-        Logger::GtLog("%f8.3 %8.3f %f8.3", x, y, z);
+        Logger::GtLog("%8.3f %8.3f %8.3f", x, y, z);
     }
 #endif
 };
@@ -248,6 +263,148 @@ public:
 inline Vector3 operator*(float s, const Vector3& v)
 {
     return Vector3(s * v.x, s * v.y, s * v.z);
+}
+
+class Vector4
+{
+private:
+    enum 
+    {
+        ELE_SIZE = 4
+    };
+public:
+    union
+    {
+        struct 
+        {
+            float x; float y; float z; float w;
+        };
+        struct
+        {
+            float r; float g; float b; float a;
+        };
+        struct
+        {
+            Vector3 xyz; float w;
+        };
+        struct
+        {
+            Vector3 rgb; float w;
+        };
+        float m[ELE_SIZE];
+    };
+
+    Vector4() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {}
+    Vector4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
+    Vector4(const Vector4& v) : x(v.x), y(v.y), z(v.z), w(v.w) {}
+    explicit Vector4(const Vector3 &v) : x(v.x), y(v.y), z(v.z), w(0.0f) {}
+    Vector4& operator=(const Vector4& v)
+    {
+        x = v.x;
+        y = v.y;
+        z = v.z;
+        w = v.w;
+        return *this;
+    }
+
+    void SetZero(void) 
+    {
+        x = 0.0f;
+        y = 0.0f;
+        z = 0.0f;
+        w = 0.0f;
+    }
+
+    Vector4 operator-(void) const
+    {
+        return Vector4(-x, -y, -z, -w);
+    }
+
+    Vector4& operator+=(const Vector4& v)
+    {
+        x += v.x;
+        y += v.y;
+        z += v.z;
+        w += v.w;
+        return *this;
+    }
+
+    Vector4& operator-=(const Vector4& v)
+    {
+        x -= v.x;
+        y -= v.y;
+        z -= v.z;
+        w -= v.w;
+        return *this;
+    }
+
+    Vector4& operator*=(float s)
+    {
+        x *= s;
+        y *= s;
+        z *= s;
+        w *= s;
+        return *this;
+    }
+
+    Vector4& operator/=(float s)
+    {
+        x /= s;
+        y /= s;
+        z /= s;
+        w /= s;
+        return *this;
+    }
+
+    Vector4 operator+(const Vector4& v) const
+    {
+        return Vector4(x + v.x, y + v.y, z + v.z, w + v.w);
+    }
+
+    Vector4 operator-(const Vector4& v) const
+    {
+        return Vector4(x - v.x, y - v.y, z - v.z, w - v.w);
+    }
+
+    Vector4 operator*(float s) const
+    {
+        return Vector4(x * s, y * s, z * s, w * s);
+    }
+
+    Vector4 operator*(Vector4 v) const
+    {
+        return Vector4(x * v.x, y * v.y, z * v.z, w * v.w);
+    }
+
+    Vector4 operator/(float d) const
+    {
+        return Vector4(x / d, y / d, z / d, w / d);
+    }
+
+    void Normalize(void)
+    {
+        float mag_sq = x * x + y * y + z * z + w * w;
+        if (mag_sq > 0)
+        {
+            float one_over_mag = 1.0f / sqrtf(mag_sq);
+            x *= one_over_mag;
+            y *= one_over_mag;
+            z *= one_over_mag;
+            w *= one_over_mag;
+        }
+    }
+#ifdef _DEBUG
+    void Display(void)
+    {
+        Logger::GtLogInfo("Vector4 content:");
+        Logger::GtLog("%8.3f %8.3f %8.3f %8.3f", x, y, z, w);
+    }
+#endif
+};
+
+inline Vector4 operator*(float s, const Vector4& v)
+{
+    return Vector4(s * v.x, s * v.y, s * v.z, s * v.w);
 }
 #pragma warning(default:4201)
 //  启用匿名结构的警告

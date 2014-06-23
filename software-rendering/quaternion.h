@@ -14,7 +14,8 @@
 class Quat
 {
 public:
-    union {
+    union 
+    {
         struct 
         {
             float w; float x; float y; float z;
@@ -49,38 +50,56 @@ public:
 
     void SetRotationX(float x_angle)
     {
-        sincosf(x_angle * 0.5f, &x, &w);
+        float rad = angle2radian(x_angle);
+        sincosf(rad * 0.5f, &x, &w);
         y = 0;
         z = 0;
     }
     static Quat GetRotationX(float x_angle)
     {
-
+        Quat ret;
+        ret.SetRotationX(x_angle);
+        return ret;
     }
 
     void SetRotationY(float y_angle)
     {
-        sincosf(y_angle * 0.5f, &y, &w);
+        float rad = angle2radian(y_angle);
+        sincosf(rad * 0.5f, &y, &w);
         x = 0;
         z = 0;
+    }
+    static Quat GetRotationY(float y_angle)
+    {
+        Quat ret;
+        ret.SetRotationY(y_angle);
+        return ret;
     }
 
     void SetRotationZ(float z_angle)
     {
-        sincosf(z_angle * 0.5f, &z, &w);
+        float rad = angle2radian(z_angle);
+        sincosf(rad * 0.5f, &z, &w);
         x = 0;
         y = 0;
+    }
+    static Quat GetRotationZ(float z_angle)
+    {
+        Quat ret;
+        ret.SetRotationZ(z_angle);
+        return ret;
     }
 
     void SetRotationAxis(const Vector3 &axis, float angle)
     {
+        float rad = angle2radian(angle);
         float s = 0.0f;
-        sincosf(angle * 0.5f, &s, &w);
+        sincosf(rad * 0.5f, &s, &w);
         v = s * axis;
     }
 
     // 转化四元数为3x3矩阵
-    Matrix33 GetMatrix33(void)
+    Matrix33 GetMatrix33(void) const
     {
         Matrix33 ret(GetRow0(),
                      GetRow1(),
@@ -88,7 +107,7 @@ public:
         return ret;
     }
 
-    Vector3 GetColumn0(void)
+    Vector3 GetColumn0(void) const 
     {
         Vector3 ret(1 - 2*y*y - 2*z*z,
                     2*x*y - 2*w*z,
@@ -96,13 +115,13 @@ public:
         return ret;
     }
 
-    Vector3 GetColumn1(void)
+    Vector3 GetColumn1(void) const 
     {
         Vector3 ret(2*x*y + 2*w*z,
                     1 - 2*x*x - 2*z*z,
                     2*y*z - 2*w*x);
     }
-    Vector3 GetColumn2(void)
+    Vector3 GetColumn2(void) const 
     {
         Vector3 ret(2*x*z - 2*w*y,
                     2*y*z + 2*w*x,
@@ -110,7 +129,7 @@ public:
         return ret;
     }
 
-    Vector3 GetRow0(void)
+    Vector3 GetRow0(void) const 
     {
         Vector3 ret(1 - 2*y*y - 2*z*z,
                     2*x*y + 2*w*z,
@@ -118,40 +137,40 @@ public:
         return ret;
     }
 
-    Vector3 GetRow1(void)
+    Vector3 GetRow1(void) const 
     {
-        Vector3 ret(2*x*y + 2*w*z,
+        Vector3 ret(2*x*y - 2*w*z,
                     1 - 2*x*x - 2*z*z,
-                    2*y*z - 2*w*x);
+                    2*y*z + 2*w*x);
         return ret;
     }
 
-    Vector3 GetRow2(void)
+    Vector3 GetRow2(void) const 
     {
-        Vector3 ret(2*x*z - 2*w*y,
-                    2*y*z + 2*w*x,
+        Vector3 ret(2*x*z + 2*w*y,
+                    2*y*z - 2*w*x,
                     1 - 2*x*x - 2*y*y);
         return ret;
     }
 
-    Quat operator-(void)
+    Quat operator-(void) const 
     {
         return Quat(-w, -v);
     }
 
-    float Magnitude(void)
+    float Magnitude(void) const 
     {
         return sqrtf(w * w + x * x + y * y + z * z);
     }
 
     // 共轭
-    Quat Conjugate(void)
+    Quat Conjugate(void) const 
     {
         return Quat(w, -v);
     }
 
     // 四元数的逆
-    Quat Inverse(void)
+    Quat Inverse(void) const
     {
         float mag = Magnitude();
         if (equalf(mag, 1.0f))
@@ -216,6 +235,18 @@ Quat operator*(const Quat &p, const Quat &q)
                 p.w*q.x + p.x*q.w + p.y*q.z - p.z*q.y,
                 p.w*q.y + p.y*q.w + p.z*q.x - p.x*q.z,
                 p.w*q.z + p.z*q.w + p.x*q.y - p.y*q.x);
+}
+
+Vector3 RotateByQuat(const Vector3 &v, const Quat &q)
+{
+    Quat tmp(0, v);
+    tmp = q * tmp * q.Inverse();
+    return Vector3(tmp.x, tmp.y, tmp.z);
+}
+
+Quat RotateByQuat(const Quat &p, const Quat &q)
+{
+    return q * p * q.Inverse();
 }
 
 #pragma warning(default:4201)

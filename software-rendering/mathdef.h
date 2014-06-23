@@ -24,10 +24,10 @@ static inline float radian2angle(float radian)
     return 180.0f * radian / gkPi;
 }
 
-static inline void sincosf(float angle, float *s, float *c)
+static inline void sincosf(float radian, float *s, float *c)
 {
-    *s = sinf(angle);
-    *c = cosf(angle);
+    *s = sinf(radian);
+    *c = cosf(radian);
 }
 
 template<typename T>

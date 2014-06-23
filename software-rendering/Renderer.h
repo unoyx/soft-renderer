@@ -74,8 +74,8 @@ private:
 
     HFONT font_;
     
-    Matrix44 world_matrix_;
-//    Camera camera_;
+    Matrix44 view_model_;
+    Matrix44 perspective_;
 //    Light light_;
 };
 

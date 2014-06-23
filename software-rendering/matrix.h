@@ -8,7 +8,6 @@
 #pragma warning(push)
 // 禁用关于匿名结构的警告
 #pragma warning(disable:4201)
-
 class Matrix33
 {
 private:
@@ -43,8 +42,8 @@ public:
         memcpy(m, p, sizeof(m));
     }
     Matrix33(float f00, float f01, float f02,
-        float f10, float f11, float f12,
-        float f20, float f21, float f22)
+             float f10, float f11, float f12,
+             float f20, float f21, float f22)
     {
         m00 = f00; m01 = f01; m02 = f02;
         m10 = f10; m11 = f11; m12 = f12;
@@ -88,7 +87,8 @@ public:
         }
         return res;
     }
-
+    
+    // 与列向量相乘
     Vector3 operator*(const Vector3& v)
     {
         Vector3 res;
@@ -137,6 +137,13 @@ public:
         return ret;
     }
 
+    void SetScaling(float x, float y, float z)
+    {
+        m00 = x;
+        m11 = y;
+        m22 = z;
+    }
+
 #ifdef _DEBUG
     void Display(void)
     {
@@ -148,6 +155,20 @@ public:
     }
 #endif
 };
+
+Vector3 operator*(const Vector3 &v, const Matrix33 &m)
+{
+    const static int ELE_SIZE = 3;
+    Vector3 ret;
+    for (int i = 0; i < ELE_SIZE; ++i)
+    {
+        for (int k = 0; k < ELE_SIZE; ++k)
+        {
+            ret.m[i] += v.m[i] * m.e[i][k];
+        }
+    }
+    return ret;
+}
 
 class Matrix44
 {
@@ -180,6 +201,13 @@ public:
     {
         memcpy(m, o.m, sizeof(m));
         return *this;
+    }
+    explicit Matrix44(const Matrix33 &o)
+    {
+        memset(m, 0, sizeof(m));
+        m00 = o.m00; m01 = o.m01; m02 = o.m02;
+        m10 = o.m10; m11 = o.m11; m12 = o.m12;
+        m20 = o.m20; m21 = o.m21; m22 = o.m22;
     }
     explicit Matrix44(const float* p)
     {
@@ -235,19 +263,16 @@ public:
         }
         return res;
     }
-
-    //Vector3 MulVector3(const Vector3& v)
-    //{
-    //    Vector3 res;
-    //    for (int i = 0; i < ELE_SIZE; ++i)
-    //    {
-    //        for (int k = 0; k < ELE_SIZE; ++k)
-    //        {
-    //            res.m[i] += e[i][k] * v.m[k];
-    //        }
-    //    }
-    //    return res;
-    //}
+    
+    // 右乘列向量
+    Vector3 operator*(const Vector3& v)
+    {
+        Vector3 res;
+        res.x = m00 * v.x + m01 * v.y + m02 * v.z + m03;
+        res.y = m10 * v.x + m11 * v.y + m12 * v.z + m13;
+        res.x = m20 * v.x + m21 * v.y + m22 * v.z + m23;
+        return res;
+    }
 
     Matrix44 operator*(float s)
     {
@@ -269,14 +294,13 @@ public:
         swap(m32, m23);
     }
 
-    void Clear(void)
+    void SetZero(void)
     {
         memset(m, 0, sizeof(m));
     }
 
     void SetIdentity(void)
     {
-        Clear();
         m00 = m11 = m22 = m33 = 1.0f;
     }
     
@@ -285,6 +309,43 @@ public:
         Matrix44 ret;
         ret.SetIdentity();
         return ret;
+    }
+    
+    // 由参数生成左手坐标系的透视投影矩阵， 角度为弧度， CVV范围为[-1, -1, 0] x [1, 1, 1]
+    // TODO 减少计算
+    void SetPerspectiveMatrixLH(float z_far, float z_near, float fov, float aspect)
+    {
+        //float rad_fov = angle2radian(fov);
+        //float top = (z_near * tanf(rad_fov / 2.0f));
+        //float bottom = -top;
+        //float right = top * aspect;
+        //float left = -right;
+        //Matrix44 m;
+        //m.m00 = 2 * z_near / (right - left);
+        //m.m11 = 2 * z_near / (top - bottom);
+        //m.m20 = (left + right) / (left - right);
+        //m.m21 = (bottom + top) / (bottom - top);
+        //m.m22 = z_far / (z_far - z_near);
+        //m.m23 = 1.0f;
+        //m.m32 = (z_near * z_far) / (z_near - z_far);
+
+        // 一般情况下 left = -right; bottom = -top; 因此可以将矩阵化简
+        float rad_fov = angle2radian(fov);
+        float top = (z_near * tanf(rad_fov / 2.0f));
+        float right = top * aspect;
+        Matrix44 m;
+        m.m00 = 2 * z_near / (right * 2);
+        m.m11 = 2 * z_near / (top * 2);
+        m.m22 = z_far / (z_far - z_near);
+        m.m23 = 1.0f;
+        m.m32 = (z_near * z_far) / (z_near - z_far);
+    }
+
+    void SetTranslation(float x, float y, float z)
+    {
+        m30 = x;
+        m31 = y;
+        m32 = z;
     }
 
 #ifdef _DEBUG
@@ -298,6 +359,25 @@ public:
         return;
     }
 #endif
+
+    void SetMatrixLookAtLH(const Vector3 &from, const Vector3 &to, const Vector3 &up)
+    {
+        Vector3 n = to - from;
+        Vector3 v = up;
+        Vector3 u = v.CrossProduct(n);
+        v = n.CrossProduct(u);
+        n.Normalize();
+        u.Normalize();
+        v.Normalize();
+
+        m00 = u.x; m10 = u.y; m20 = u.z;
+        m01 = v.x; m11 = v.y; m21 = v.z;
+        m02 = n.x; m12 = n.y; m22 = n.z;
+
+        SetTranslation(from.x, from.y, from.z);
+    }
+
+
 };
 
 Vector3 operator*(const Vector3 &v, const Matrix44 &m)
