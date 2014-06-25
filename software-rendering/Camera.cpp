@@ -2,10 +2,12 @@
 
 void Camera::Rotate(float heading, float pitch)
 {
-    Quat rotate = Quat::GetRotationY(heading);
-    ori_ = RotateByQuat(ori_, rotate);
-    rotate.SetRotationX(pitch);
-    ori_ = RotateByQuat(ori_, rotate);
+    Quat rotate = Quat::GetRotationX(heading);
+//    ori_ = RotateByQuat(ori_, rotate);
+    ori_ = rotate * ori_;
+    rotate = Quat::GetIdentity();
+    rotate.SetRotationY(pitch);
+    ori_ = rotate * ori_;
 }
 
 void Camera::Move(const Vector3 &v)
@@ -25,10 +27,9 @@ Matrix44 Camera::GetPerpectivMatrix(void)
 // 获取旋转平移矩阵
 Matrix44 Camera::GetModelViewMatrix(void)
 {
-    // fixme 旋转方向不正常
-    Matrix33 rotate = ori_.Inverse().GetMatrix33();
+    Matrix33 rotate = ori_.GetMatrix33();
     Matrix44 m(rotate);
-    m.SetTranslation(pos_.x, pos_.y, pos_.z);
+    m.SetTranslation(-pos_.x, -pos_.y, -pos_.z);
     return m;
 }
 

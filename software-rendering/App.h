@@ -21,18 +21,18 @@
 #include <math.h>
 // Windows Header Files:
 #include <windows.h>
+#include "InputManager.h"
 #include "Renderer.h"
-
-#include "quaternion.h"
+#include "Camera.h"
 
 //
 // DemoApp class declaration
 //
-class DemoApp
+class App
 {
 public:
-    DemoApp();
-    ~DemoApp();
+    App();
+    ~App();
 
     // Register the window class and call methods for instantiating drawing resources
     HWND Initialize(HINSTANCE inst, int width, int height);
@@ -47,11 +47,13 @@ private:
                                     WPARAM wParam,
                                     LPARAM lParam);
 private:
-    DemoApp(const DemoApp&);
-    DemoApp& operator=(const DemoApp&);
+    App(const App&);
+    App& operator=(const App&);
 
-    HWND hwind_;
+    HWND wnd_;
     int width_;
     int height_;
+    InputManager input_mgr_;
     Renderer renderer_;
+    Camera camera_;
 };

@@ -114,7 +114,7 @@ public:
         }
     }
 #ifdef _DEBUG
-    void Display(void)
+    void Display(void) const
     {
         Logger::GtLogInfo("Vector2 content:");
         Logger::GtLog("%f8.3 %f8.3", x, y);
@@ -152,7 +152,7 @@ public:
         float m[ELE_SIZE];
     };
 
-    Vector3() : x(0.0f), y(0.0f), z(0.0f) {}
+    Vector3(void) : x(0.0f), y(0.0f), z(0.0f) {}
     Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
     Vector3(const Vector3& v) : x(v.x), y(v.y), z(v.z) {}
     Vector3& operator=(const Vector3& v)
@@ -252,7 +252,7 @@ public:
         }
     }
 #ifdef _DEBUG
-    void Display(void)
+    void Display(void) const
     {
         Logger::GtLogInfo("Vector3 content:");
         Logger::GtLog("%8.3f %8.3f %8.3f", x, y, z);
@@ -283,21 +283,21 @@ public:
         {
             float r; float g; float b; float a;
         };
-        struct
-        {
-            Vector3 xyz; float w;
-        };
-        struct
-        {
-            Vector3 rgb; float w;
-        };
+        //struct
+        //{
+        //    Vector3 xyz;
+        //};
         float m[ELE_SIZE];
     };
 
     Vector4() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {}
+    Vector4(const Vector4 &v) 
+        : x(v.x)
+        , y(v.y)
+        , z(v.z)
+        , w(v.w) {}
     Vector4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
-    Vector4(const Vector4& v) : x(v.x), y(v.y), z(v.z), w(v.w) {}
-    explicit Vector4(const Vector3 &v) : x(v.x), y(v.y), z(v.z), w(0.0f) {}
+    //explicit Vector4(const Vector3 &v) : x(v.x), y(v.y), z(v.z), w(0.0f) {}
     Vector4& operator=(const Vector4& v)
     {
         x = v.x;
@@ -313,6 +313,18 @@ public:
         y = 0.0f;
         z = 0.0f;
         w = 0.0f;
+    }
+
+    void SetVector3(const Vector3 &v)
+    {
+        x = v.x;
+        y = v.y;
+        z = v.z;
+    }
+
+    Vector3 GetVector3(void)
+    {
+        return Vector3(x, y, z);
     }
 
     Vector4 operator-(void) const
@@ -394,7 +406,7 @@ public:
         }
     }
 #ifdef _DEBUG
-    void Display(void)
+    void Display(void) const
     {
         Logger::GtLogInfo("Vector4 content:");
         Logger::GtLog("%8.3f %8.3f %8.3f %8.3f", x, y, z, w);

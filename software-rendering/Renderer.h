@@ -13,6 +13,12 @@
 using std::string;
 using std::vector;
 
+enum MatrixType
+{
+    kModelView = 0,
+    kPerspective = 1
+};
+
 class Renderer
 {
 public:
@@ -20,19 +26,14 @@ public:
     ~Renderer(void);
     void Initialize(HWND hwnd, int width, int height);
     void Uninitialize(void);
-    
-    void BeginFrame(void);
-    void EndFrame(void);
 
-    // 绘制三角形
-    void DrawPrimitive(Primitive *primitive);
 
     // DDA 画线, 包括两端点 
-    inline void DrawLine(Point p0, Point p1, uint32 c);
+    void DrawLine(Point p0, Point p1, uint32 c);
 
     void DrawPixel(int x, int y, uint32 c)
     {
-        int idx = x * pitch_ / 4 + y;
+        int idx = y * pitch_ / 4 + x;
         buffer_[idx] = c;
     }
 
@@ -60,6 +61,40 @@ public:
         
         d3d_backbuffer_->ReleaseDC(hdc);
     }
+
+    void BeginFrame(void);
+
+    void EndFrame(void);
+
+    // TODO 设置变换用的各个矩阵
+    void SetMatrix(MatrixType t, const Matrix44 m);
+
+    // TODO 设置光源
+    void SetLight();
+
+    // TODO 变换物体坐标至视图空间 *
+    void ModelViewTransform(void);
+
+    // TODO 背面剔除
+    void BackfaceCulling(void);
+
+    // TODO 计算光照
+    void Lighting(void);
+
+    // TODO 透视投影 *
+    void PerspectiveProjection(void);
+
+    // TODO 裁剪 *
+    void Clipping(void);
+
+    // TODO 视口变换 *
+    void ViewportTransform(void);
+
+    // TODO 光栅化 *
+    void Rasterization(void);
+
+    // 绘制三角形
+    void DrawPrimitive(Primitive *primitive);
 private:
     Renderer(const Renderer&);
     Renderer& operator=(const Renderer&);
@@ -70,12 +105,15 @@ private:
     int width_;
     int height_;
     int pitch_;
+    // 指向backbufer内容
     uint32 *buffer_;
 
     HFONT font_;
     
-    Matrix44 view_model_;
+    Matrix44 model_view_;
     Matrix44 perspective_;
 //    Light light_;
+    RendPrimitive rend_primitive_;
+    std::vector<Triangle> triangles_;
 };
 

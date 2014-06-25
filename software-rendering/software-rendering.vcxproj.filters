@@ -16,6 +16,9 @@
     <Filter Include="math">
       <UniqueIdentifier>{5fee9279-3caa-4ed4-8c99-90fe92800a36}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Input">
+      <UniqueIdentifier>{423e4dac-ea81-4e73-9193-81e759fc94fb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -37,6 +40,18 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Light.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="quaternion.cpp">
+      <Filter>math</Filter>
+    </ClCompile>
+    <ClCompile Include="matrix.cpp">
+      <Filter>math</Filter>
+    </ClCompile>
+    <ClCompile Include="Fragment.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="InputManager.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -73,6 +88,12 @@
     </ClInclude>
     <ClInclude Include="mathdef.h">
       <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="Fragment.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="InputManager.h">
+      <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

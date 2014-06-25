@@ -13,18 +13,42 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Dependence">
+      <UniqueIdentifier>{a7797896-d8dc-47ba-9c06-305cea0c8c99}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\software-rendering\Logger.cpp">
-      <Filter>源文件</Filter>
+      <Filter>Dependence</Filter>
+    </ClCompile>
+    <ClCompile Include="..\software-rendering\Camera.cpp">
+      <Filter>Dependence</Filter>
+    </ClCompile>
+    <ClCompile Include="..\software-rendering\quaternion.cpp">
+      <Filter>Dependence</Filter>
+    </ClCompile>
+    <ClCompile Include="..\software-rendering\matrix.cpp">
+      <Filter>Dependence</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\software-rendering\Logger.h">
-      <Filter>头文件</Filter>
+      <Filter>Dependence</Filter>
+    </ClInclude>
+    <ClInclude Include="..\software-rendering\Camera.h">
+      <Filter>Dependence</Filter>
+    </ClInclude>
+    <ClInclude Include="..\software-rendering\quaternion.h">
+      <Filter>Dependence</Filter>
+    </ClInclude>
+    <ClInclude Include="..\software-rendering\matrix.h">
+      <Filter>Dependence</Filter>
+    </ClInclude>
+    <ClInclude Include="..\software-rendering\mathdef.h">
+      <Filter>Dependence</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

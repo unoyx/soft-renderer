@@ -3,23 +3,22 @@
 #include "util.h"
 
 // DemoApp constructor
-DemoApp::DemoApp()
-    :hwind_(nullptr),
-    width_(0),
-    height_(0)
-
+App::App()
+    :wnd_(nullptr)
+    ,width_(0)
+    ,height_(0)
 {
 }
 
 // DemoApp destructor
 // Releases the application's resources.
-DemoApp::~DemoApp()
+App::~App()
 {
 }
 
 // Creates the application window and device-independent
 // resources.
-HWND DemoApp::Initialize(HINSTANCE inst, int width, int height)
+HWND App::Initialize(HINSTANCE inst, int width, int height)
 {
     width_ = width;
     height_ = height;
@@ -28,7 +27,7 @@ HWND DemoApp::Initialize(HINSTANCE inst, int width, int height)
     WNDCLASSEX wcex    = {0};
     wcex.cbSize        = sizeof(wcex);
     wcex.style         = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc   = DemoApp::WndProc;
+    wcex.lpfnWndProc   = App::WndProc;
     wcex.cbClsExtra    = 0;
     wcex.cbWndExtra    = sizeof(LONG_PTR);
     wcex.hInstance     = inst;
@@ -41,37 +40,45 @@ HWND DemoApp::Initialize(HINSTANCE inst, int width, int height)
     (void)RegisterClassEx(&wcex);
 
     // Create the window.
-    hwind_ = CreateWindow("D2DDemoApp",
-                          "Direct2D Demo App",
-                          WS_OVERLAPPED | WS_SYSMENU,
-                          CW_USEDEFAULT,
-                          CW_USEDEFAULT,
-                          width_,
-                          height_,
-                          nullptr,
-                          nullptr,
-                          inst,
-                          this);
-    if (!hwind_)
+    wnd_ = CreateWindow("D2DDemoApp",
+                        "Direct2D Demo App",
+                        WS_OVERLAPPED | WS_SYSMENU,
+                        CW_USEDEFAULT,
+                        CW_USEDEFAULT,
+                        width_,
+                        height_,
+                        nullptr,
+                        nullptr,
+                        inst,
+                        this);
+    if (!wnd_)
     {
-        MessageBox(hwind_, "创建窗口失败", "", MB_OK);
+        MessageBox(wnd_, "创建窗口失败", "", MB_OK);
         return nullptr;
     }
 
-    ShowWindow(hwind_, SW_SHOWNORMAL);
-    UpdateWindow(hwind_);
+    ShowWindow(wnd_, SW_SHOWNORMAL);
+    UpdateWindow(wnd_);
 
-    renderer_.Initialize(hwind_, width, height);
+    input_mgr_.Initialize(inst, wnd_);
+    renderer_.Initialize(wnd_, width, height);
 
-    return hwind_;
+    camera_.set_pos(Vector3(0, 0, -2));
+    camera_.set_far(1.0);
+    camera_.set_near(-0.5);
+    camera_.set_fov(60);
+    float aspect = static_cast<float>(width) / static_cast<float> (height);
+    camera_.set_aspect(aspect);
+
+    return wnd_;
 }
 
-void DemoApp::Uninitialize(void)
+void App::Uninitialize(void)
 {
     renderer_.Uninitialize();
 }
 
-void DemoApp::Run()
+void App::Run()
 {
     for (;;)
     {
@@ -100,14 +107,50 @@ void DemoApp::Run()
     }
 }
 
-void DemoApp::Update(void)
+void App::Update(void)
 {
-    renderer_.BeginFrame();
+    static int elapsed_tick = GetTickCount();
+    int current_tick = GetTickCount();
+    int diff_tick = current_tick - elapsed_tick;
+    elapsed_tick = current_tick;
 
-    for (int i = 0; i < 200; ++i)
-    {
-        renderer_.DrawLine(Point(0, i + 100), Point(100, i + 100), 0x00ff0000);
-    }
+    input_mgr_.Update();
+    
+    int mouse_dx = input_mgr_.GetMouseMovingX();
+    int mouse_dy = input_mgr_.GetMouseMovingY();
+
+    if (input_mgr_.KeyDown(DIK_D))
+        camera_.Rotate(0, 3.0 * diff_tick / 100.0);
+    if (input_mgr_.KeyDown(DIK_A))
+        camera_.Rotate(0, -3.0 * diff_tick / 100.0);
+
+    if (input_mgr_.KeyDown(DIK_W))
+        camera_.Move(Vector3(0, 0, 0.5 * diff_tick / 100.0));
+    if (input_mgr_.KeyDown(DIK_S))
+        camera_.Move(Vector3(0, 0, -0.5 * diff_tick / 100.0));
+
+
+    renderer_.BeginFrame();
+    
+    Primitive primitive(3);
+    primitive.vertexes[0] = Vector3(0, 1, 0);
+    primitive.vertexes[1] = Vector3(1, 0, 0);
+    primitive.vertexes[2] = Vector3(-1, 0, 0);
+
+    renderer_.SetMatrix(kModelView, camera_.GetModelViewMatrix());
+    renderer_.SetMatrix(kPerspective, camera_.GetPerpectivMatrix());
+
+    renderer_.DrawPrimitive(&primitive);
+
+    //for (int i = 0; i < width_; ++i)
+    //{
+    //    for (int j = 0; j < height_; ++j)
+    //    {
+    //        renderer_.DrawPixel(j, i, 0x00ff0000);
+    //    }
+    //}
+
+//    renderer_.DrawLine(Point(400, 0), Point(700, 300), 0x00ff0000);
 
 //    renderer_.DrawText(Point2(100, 100), "hello world", 0x0000ff00);
 
@@ -115,12 +158,12 @@ void DemoApp::Update(void)
 }
 
 // Handles window messages.
-LRESULT CALLBACK DemoApp::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK App::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     if (message == WM_CREATE)
     {
         LPCREATESTRUCT pcs = (LPCREATESTRUCT)lParam;
-        DemoApp *pDemoApp = (DemoApp *)pcs->lpCreateParams;
+        App *pDemoApp = (App *)pcs->lpCreateParams;
 
         ::SetWindowLongPtrW(hwnd,
                             GWLP_USERDATA,
@@ -128,7 +171,7 @@ LRESULT CALLBACK DemoApp::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
     }
     else
     {
-        DemoApp *pDemoApp = reinterpret_cast<DemoApp *>(static_cast<LONG_PTR>(::GetWindowLongPtrW(hwnd,
+        App *pDemoApp = reinterpret_cast<App *>(static_cast<LONG_PTR>(::GetWindowLongPtrW(hwnd,
                                                                                                   GWLP_USERDATA)));
         if (pDemoApp)
         {

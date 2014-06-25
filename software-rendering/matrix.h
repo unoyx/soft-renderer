@@ -145,7 +145,7 @@ public:
     }
 
 #ifdef _DEBUG
-    void Display(void)
+    void Display(void) const
     {
         Logger::GtLogInfo("Matrix33 content:");
         Logger::GtLog("%8.3f %8.3f %8.3f", m00, m01, m02);
@@ -156,19 +156,7 @@ public:
 #endif
 };
 
-Vector3 operator*(const Vector3 &v, const Matrix33 &m)
-{
-    const static int ELE_SIZE = 3;
-    Vector3 ret;
-    for (int i = 0; i < ELE_SIZE; ++i)
-    {
-        for (int k = 0; k < ELE_SIZE; ++k)
-        {
-            ret.m[i] += v.m[i] * m.e[i][k];
-        }
-    }
-    return ret;
-}
+Vector3 operator*(const Vector3 &v, const Matrix33 &m);
 
 class Matrix44
 {
@@ -265,12 +253,25 @@ public:
     }
     
     // 右乘列向量
-    Vector3 operator*(const Vector3& v)
+    Vector3 operator*(const Vector3 &v) const
     {
         Vector3 res;
         res.x = m00 * v.x + m01 * v.y + m02 * v.z + m03;
         res.y = m10 * v.x + m11 * v.y + m12 * v.z + m13;
         res.x = m20 * v.x + m21 * v.y + m22 * v.z + m23;
+        return res;
+    }
+
+    Vector4 operator*(const Vector4 &v) const
+    {
+        Vector4 res;
+        for (int i = 0; i < ELE_SIZE; ++i)
+        {
+            for (int k = 0; k < ELE_SIZE; ++k)
+            {
+                res.m[i] += e[i][k] * v.m[k];
+            }
+        }
         return res;
     }
 
@@ -312,33 +313,30 @@ public:
     }
     
     // 由参数生成左手坐标系的透视投影矩阵， 角度为弧度， CVV范围为[-1, -1, 0] x [1, 1, 1]
+    // 透视矩阵的默认朝向为z轴
     // TODO 减少计算
     void SetPerspectiveMatrixLH(float z_far, float z_near, float fov, float aspect)
     {
-        //float rad_fov = angle2radian(fov);
-        //float top = (z_near * tanf(rad_fov / 2.0f));
+        //float top = (z_near * tanf(fov / 2.0f));
         //float bottom = -top;
         //float right = top * aspect;
         //float left = -right;
-        //Matrix44 m;
-        //m.m00 = 2 * z_near / (right - left);
-        //m.m11 = 2 * z_near / (top - bottom);
-        //m.m20 = (left + right) / (left - right);
-        //m.m21 = (bottom + top) / (bottom - top);
-        //m.m22 = z_far / (z_far - z_near);
-        //m.m23 = 1.0f;
-        //m.m32 = (z_near * z_far) / (z_near - z_far);
+        //m00 = 2 * z_near / (right - left);
+        //m11 = 2 * z_near / (top - bottom);
+        //m20 = (left + right) / (left - right);
+        //m21 = (bottom + top) / (bottom - top);
+        //m22 = z_far / (z_far - z_near);
+        //m23 = 1.0f;
+        //m32 = (z_near * z_far) / (z_near - z_far);
 
         // 一般情况下 left = -right; bottom = -top; 因此可以将矩阵化简
-        float rad_fov = angle2radian(fov);
-        float top = (z_near * tanf(rad_fov / 2.0f));
+        float top = (z_near * tanf(fov / 2.0f));
         float right = top * aspect;
-        Matrix44 m;
-        m.m00 = 2 * z_near / (right * 2);
-        m.m11 = 2 * z_near / (top * 2);
-        m.m22 = z_far / (z_far - z_near);
-        m.m23 = 1.0f;
-        m.m32 = (z_near * z_far) / (z_near - z_far);
+        m00 = 2 * z_near / (right * 2);
+        m11 = 2 * z_near / (top * 2);
+        m22 = z_far / (z_far - z_near);
+        m23 = 1.0f;
+        m32 = (z_near * z_far) / (z_near - z_far);
     }
 
     void SetTranslation(float x, float y, float z)
@@ -349,7 +347,7 @@ public:
     }
 
 #ifdef _DEBUG
-    void Display(void)
+    void Display(void) const
     {
         Logger::GtLogInfo("Matrix44 content:");
         Logger::GtLog("%8.3f %8.3f %8.3f %8.3f", m00, m01, m02, m03);
@@ -380,14 +378,8 @@ public:
 
 };
 
-Vector3 operator*(const Vector3 &v, const Matrix44 &m)
-{
-    Vector3 ret;
-    ret.x = v.x * m.m00 + v.y * m.m10 + v.z * m.m20 + m.m30;
-    ret.y = v.x * m.m01 + v.y * m.m11 + v.z * m.m21 + m.m31;
-    ret.z = v.x * m.m02 + v.y * m.m12 + v.z * m.m22 + m.m32;
-    return ret;
-}
+Vector3 operator*(const Vector3 &v, const Matrix44 &m);
+Vector4 operator*(const Vector4 &v, const Matrix44 &m);
 
 #pragma warning(default:4201)
 //  启用匿名结构的警告

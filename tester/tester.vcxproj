@@ -76,11 +76,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\software-rendering\Camera.cpp" />
     <ClCompile Include="..\software-rendering\Logger.cpp" />
+    <ClCompile Include="..\software-rendering\matrix.cpp" />
+    <ClCompile Include="..\software-rendering\quaternion.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\software-rendering\Camera.h" />
     <ClInclude Include="..\software-rendering\Logger.h" />
+    <ClInclude Include="..\software-rendering\mathdef.h" />
+    <ClInclude Include="..\software-rendering\matrix.h" />
+    <ClInclude Include="..\software-rendering\quaternion.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

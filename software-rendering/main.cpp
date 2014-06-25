@@ -16,7 +16,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
     if (SUCCEEDED(CoInitialize(NULL)))
     {
         {
-            DemoApp app;
+            App app;
 
             if (app.Initialize(hInstance, 800, 600))
             {
