@@ -129,3 +129,15 @@ public:
 //    Vector3 n[3];
 //    Vector2 uv[3][2];
 };
+
+class Material
+{
+public:
+    Vector4 diffuse;
+    Vector4 ambient;
+    Vector4 specular;
+    Vector4 emissive;
+    float power;
+    Material(void)
+        :power(0.0f){}
+};
