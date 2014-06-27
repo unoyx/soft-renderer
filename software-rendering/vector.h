@@ -322,7 +322,7 @@ public:
         z = v.z;
     }
 
-    Vector3 GetVector3(void)
+    Vector3 GetVector3(void) const
     {
         return Vector3(x, y, z);
     }

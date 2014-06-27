@@ -12,6 +12,7 @@ Renderer::Renderer(void)
     ,buffer_(nullptr)
     ,backface_culling_(false)
     ,z_buffer_(nullptr)
+    ,flat_(false)
 {
 }
 
@@ -101,8 +102,9 @@ inline void Renderer::DrawLine(Point p0, Point p1, uint32 c)
 {
 //    assert(0 <= p0.x && p0.x <= width_);
 //    assert(0 <= p1.y && p1.y <= height_);
-    int dy = p1.y - p0.y;
+    // 线段在x,y方向的增量
     int dx = p1.x - p0.x;
+    int dy = p1.y - p0.y;
 
     int steps = 0;
     if (abs(dy) > abs(dx))
@@ -114,20 +116,35 @@ inline void Renderer::DrawLine(Point p0, Point p1, uint32 c)
         steps = abs(dx);
     }
 
-    float x_inc = static_cast<float>(dx) / static_cast<float>(steps);
-    float y_inc = static_cast<float>(dy) / static_cast<float>(steps);
+    // 整数计数器的增量
+    float x_inc = abs(dx);
+    float y_inc = abs(dy);
+    // 整数计数器
+    int x_m = 0;
+    int y_m = 0;
 
-    float x = static_cast<float>(p0.x);
-    float y = static_cast<float>(p0.y);
+    int x = p0.x;
+    int y = p0.y;
 
-//    if (0 <= x && x <= width_ && 0 <= y && y <= height_)
-    DrawPixel(round(x), round(y), c);
+    int x_step = (dx > 0) ? 1 : -1;
+    int y_step = (dy > 0) ? 1 : -1;
+
+    DrawPixel(x, y, c);
     for (int k = 0; k < steps; ++k)
     {
-        x += x_inc;
-        y += y_inc;
-//        if (0 <= x && x <= width_ && 0 <= y && y <= height_)
-        DrawPixel(round(x), round(y), c);
+        x_m += x_inc;
+        if (x_m >= steps)
+        {
+            x_m -= steps;
+            x += x_step;
+        }
+        y_m += y_inc;
+        if (y_m >= steps)
+        {
+            y_m -= steps;
+            y += y_step;
+        }
+        DrawPixel(x, y, c);
     }
 }
 
@@ -188,6 +205,7 @@ void Renderer::DrawPrimitive(Primitive *primitive)
     Rasterization();
 }
 
+// rend_primitive 相机空间
 void Renderer::ModelViewTransform()
 {
     for (int i = 0; i < rend_primitive_.size; ++i)
@@ -200,7 +218,7 @@ void Renderer::ModelViewTransform()
 //{
 //
 //}
-
+// rend_primitive [N/R*x, N/T*y, F(z-N)/(F-N), z]
 void Renderer::PerspectiveProjection()
 {
     for (int i = 0; i < rend_primitive_.size; ++i)
@@ -209,6 +227,7 @@ void Renderer::PerspectiveProjection()
     }
 }
 
+// 透视裁剪，并将对象变换至视口
 void Renderer::ViewportTransform()
 {
     const int width_div2 = width_ / 2;
@@ -317,6 +336,7 @@ bool Renderer::ClipLine3d(const Vector4 &beg, const Vector4 &end,
     return false;
 }
 
+// 背面剔除，裁剪
 void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
 {
     assert((rend_primitive_.size % 3) == 0);
@@ -378,6 +398,7 @@ void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
                 v0 = 2; v1 = 0; v2 = 1;
             }
             // make v0 is in. v1, v2 is out.
+            // and keep the sequence of triangle.
             bool ret = false;
             ret = ClipLine3d(vtx[v0], vtx[v1], w_min, w_max, &vtx[v1]);
             assert(ret);
@@ -401,6 +422,7 @@ void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
                 v0 = 2; v1 = 0; v2 = 1;
             }
             // make v0 is out. v1, v2 is in. 
+            // and keep the sequence of triangle.
             Vector4 m;
             Vector4 n;
             bool ret = false;
@@ -410,7 +432,7 @@ void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
             assert(ret);
             Triangle tri0(m, vtx[v1], vtx[v2]);
             triangles_.push_back(tri0);
-            Triangle tri1(n, vtx[v2], n);
+            Triangle tri1(n, m, vtx[v2]);
             triangles_.push_back(tri1);
         }
         else if (vertex_in_cvv == 3)
@@ -425,16 +447,134 @@ void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
     }
 }
 
+// 直接光栅化，对象已在视口内
 void Renderer::Rasterization()
 {
     for (int i = 0; i < triangles_.size(); ++i)
     {
-        Vector3 p0 = triangles_[i].p[0].GetVector3();
-        Vector3 p1 = triangles_[i].p[1].GetVector3();
-        Vector3 p2 = triangles_[i].p[2].GetVector3();
+        const uint32 c[3] = {0x00ff0000, 0x0000ff00, 0x000000ff};
+        static int k = 0;
 
-        DrawLine(Point(p0.x, p0.y), Point(p1.x, p1.y), 0x00ff0000);
-        DrawLine(Point(p1.x, p1.y), Point(p2.x, p2.y), 0x0000ff00);
-        DrawLine(Point(p2.x, p2.y), Point(p0.x, p0.y), 0x000000ff);
+        if (flat_)
+        {
+            FlatTriangle(&triangles_[i], c[k++]);
+            k %= 3;
+        }
+        else
+        {
+            Vector3 p0 = triangles_[i].p[0].GetVector3();
+            Vector3 p1 = triangles_[i].p[1].GetVector3();
+            Vector3 p2 = triangles_[i].p[2].GetVector3();
+
+            DrawLine(Point(p0.x, p0.y), Point(p1.x, p1.y), 0x00ff0000);
+            DrawLine(Point(p1.x, p1.y), Point(p2.x, p2.y), 0x0000ff00);
+            DrawLine(Point(p2.x, p2.y), Point(p0.x, p0.y), 0x000000ff);
+        }
+    }
+}
+
+void Renderer::FlatTriangle(const Triangle *tri, uint32 color)
+{
+    Vector3 v0 = tri->p[0].GetVector3();
+    Vector3 v1 = tri->p[1].GetVector3();
+    Vector3 v2 = tri->p[2].GetVector3();
+
+    if (equalf(v0.x, v1.x) && equalf(v1.x, v2.x))
+        return;
+    if (equalf(v0.y, v1.y) && equalf(v1.y, v2.y))
+        return;
+
+    // TODO 应该可以利用管线中三角形的性质进行优化d
+    // 屏幕坐标，y轴朝下
+    if (v0.y > v1.y)
+    {
+        swap(v0, v1);
+    }
+    if (v0.y > v2.y)
+    {
+        swap(v0, v2);
+    }
+    if (v1.y > v2.y)
+    {
+        swap(v1, v2);
+    }
+    
+    // 平顶三角形
+    if (equalf(v0.y, v1.y))
+    {
+        if (v0.x > v1.x)
+            swap(v0, v1);
+        FlatTriangleDown(v0, v1, v2, color);
+    }
+    // 平底三角形
+    else if (equalf(v1.y, v2.y))
+    {
+        if (v2.x > v1.x)
+            swap(v1, v2);
+        FlatTriangleUp(v0, v1, v2, color);
+    }
+    else
+    {
+        // 差值计算中点
+        Vector3 m;
+        m.y = v1.y;
+        // m.x = (v0.x - v2.x ) / (v0.y - v2.y) * (m.y - v0.y) + v2.x;
+        m.x = (v0.x * m.y - v0.x * v2.y - v2.x * m.y + v2.x * v0.y) / (v0.y - v2.y);
+        // 朝左的三角形
+        if (v1.x < m.x)
+        {
+            FlatTriangleUp(v0, m, v1, color);
+            FlatTriangleDown(v1, m, v2, color);
+        }
+        // 朝右的三角形
+        else
+        {
+            FlatTriangleUp(v0, v1, m, color);
+            FlatTriangleDown(m, v1, v2, color);
+        }
+    }
+}
+
+// 平底三角形，朝上
+void Renderer::FlatTriangleUp(const Vector3 &v0, const Vector3 &v1, const Vector3 &v2, uint32 color)
+{
+    assert(equalf(v1.y, v2.y));
+    assert(v0.y < v1.y);
+    float dx_left = (v2.x - v0.x) / (v2.y - v0.y);
+    float dx_right = (v1.x - v0.x) / (v2.y - v0.y);
+
+    float sx = v0.x;
+    float ex = v0.x;
+
+    for (int i = round(v0.y); i < round(v1.y); ++i)
+    {
+        for (int j = round(sx); j < round(ex); ++j)
+        {
+            DrawPixel(j, i, color);
+        }
+        sx += dx_left;
+        ex += dx_right;
+    }
+}
+
+// 平顶三角形，朝下
+void Renderer::FlatTriangleDown(const Vector3 &v0, const Vector3 &v1, const Vector3 &v2, uint32 color)
+{
+    assert(equalf(v0.y, v1.y));
+    assert(v0.y < v2.y);
+    float dx_left = (v2.x - v0.x) / (v2.y - v0.y);
+    float dx_right = (v2.x - v1.x) / (v2.y - v0.y);
+
+    float sx = v0.x;
+    float ex = v1.x;
+
+    for (int i = round(v0.y); i < round(v2.y); ++i)
+    {
+        for (int j = round(sx); j < round(ex); ++j)
+        {
+            DrawPixel(j, i, color);
+        }
+        sx += dx_left;
+        ex += dx_right;
     }
 }

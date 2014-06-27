@@ -116,21 +116,32 @@ void App::Update(void)
 
     input_mgr_.Update();
     
-
+    const float move_speed = 0.5f * diff_tick / 100.0f;
     if (input_mgr_.KeyDown(DIK_D))
-        camera_.Rotate(0, 3.0f * diff_tick / 100.0);
+        camera_.Move(Vector3(move_speed, 0, 0));
     if (input_mgr_.KeyDown(DIK_A))
-        camera_.Rotate(0, -3.0f * diff_tick / 100.0);
+        camera_.Move(Vector3(-move_speed, 0, 0));
 
     if (input_mgr_.KeyDown(DIK_W))
-        camera_.Move(Vector3(0, 0, 0.5f * diff_tick / 100.0));
+        camera_.Move(Vector3(0, 0, move_speed));
     if (input_mgr_.KeyDown(DIK_S))
-        camera_.Move(Vector3(0, 0, -0.5f * diff_tick / 100.0));
+        camera_.Move(Vector3(0, 0, -move_speed));
+
+    if (input_mgr_.KeyDown(DIK_Q))
+        camera_.Move(Vector3(0, move_speed, 0));
+    if (input_mgr_.KeyDown(DIK_E))
+        camera_.Move(Vector3(0, -move_speed, 0));
+
+    const float rotate_speed = 3.0f * diff_tick / 100.0f;
 
     if (input_mgr_.KeyDown(DIK_UP))
-        camera_.Rotate(3.0f * diff_tick / 100.0, 0);
+        camera_.Rotate(rotate_speed, 0);
     if (input_mgr_.KeyDown(DIK_DOWN))
-        camera_.Rotate(-3.0f * diff_tick / 100.0, 0);
+        camera_.Rotate(-rotate_speed, 0);
+    if (input_mgr_.KeyDown(DIK_LEFT))
+        camera_.Rotate(0, rotate_speed);
+    if (input_mgr_.KeyDown(DIK_RIGHT))
+        camera_.Rotate(0, -rotate_speed);
 
     static bool bf_culling = true;
 
@@ -139,7 +150,13 @@ void App::Update(void)
         renderer_.SetBackfaceCulling(bf_culling);
         bf_culling = !bf_culling;
     }
-
+    
+    static bool bf_flat = true;
+    if (input_mgr_.KeyPressed(DIK_F))
+    {
+        renderer_.SetFlat(bf_flat);
+        bf_flat = !bf_flat;
+    }
 
     renderer_.BeginFrame();
     

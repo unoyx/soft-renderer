@@ -100,9 +100,18 @@ public:
 
     // »æÖÆÈý½ÇÐÎ
     void DrawPrimitive(Primitive *primitive);
+
+    void SetFlat(bool flag)
+    {
+        flat_ = flag;
+    }
 private:
     bool ClipLine3d(const Vector4 &beg, const Vector4 &end, 
                     const Vector3 &w_min, const Vector3 &w_max, Vector4 *res);
+
+    void FlatTriangle(const Triangle *tri, uint32 color);
+    void FlatTriangleUp(const Vector3 &v0, const Vector3 &v1, const Vector3 &v2, uint32 color);
+    void FlatTriangleDown(const Vector3 &v0, const Vector3 &v1, const Vector3 &v2, uint32 color);
 private:
     Renderer(const Renderer&);
     Renderer& operator=(const Renderer&);
@@ -127,5 +136,7 @@ private:
 //    Light light_;
     RendPrimitive rend_primitive_;
     std::vector<Triangle> triangles_;
+
+    bool flat_;
 };
 
