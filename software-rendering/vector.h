@@ -418,6 +418,14 @@ inline Vector4 operator*(float s, const Vector4& v)
 {
     return Vector4(s * v.x, s * v.y, s * v.z, s * v.w);
 }
+
+inline Vector3 CrossProduct(const Vector3 &lhs, const Vector3 &rhs)
+{
+    return Vector3(lhs.y * rhs.z - lhs.z * rhs.y,
+                   lhs.z * rhs.x - lhs.x * rhs.z,
+                   lhs.x * rhs.y - lhs.y * rhs.x);
+}
+
 #pragma warning(default:4201)
 //  启用匿名结构的警告
 #pragma warning(pop)

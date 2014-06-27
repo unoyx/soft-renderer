@@ -78,6 +78,11 @@ public:
     // TODO 背面剔除
     void BackfaceCulling(void);
 
+    void SetBackfaceCulling(bool flag)
+    {
+        backface_culling_ = flag;
+    }
+
     // TODO 计算光照
     void Lighting(void);
 
@@ -85,7 +90,7 @@ public:
     void PerspectiveProjection(void);
 
     // TODO 裁剪 *
-    void Clipping(void);
+    void Clipping(const Vector3 &w_min, const Vector3 &w_max);
 
     // TODO 视口变换 *
     void ViewportTransform(void);
@@ -96,18 +101,25 @@ public:
     // 绘制三角形
     void DrawPrimitive(Primitive *primitive);
 private:
+    bool ClipLine3d(const Vector4 &beg, const Vector4 &end, 
+                    const Vector3 &w_min, const Vector3 &w_max, Vector4 *res);
+private:
     Renderer(const Renderer&);
     Renderer& operator=(const Renderer&);
 
     IDirect3D9 *d3d9_;
     IDirect3DDevice9 *d3d_device_;
     IDirect3DSurface9 *d3d_backbuffer_;
+
+    bool backface_culling_;
+
     int width_;
     int height_;
     int pitch_;
     // 指向backbufer内容
     uint32 *buffer_;
-
+    // z-buffer
+    float *z_buffer_;
     HFONT font_;
     
     Matrix44 model_view_;

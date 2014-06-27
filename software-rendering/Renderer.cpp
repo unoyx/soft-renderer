@@ -3,13 +3,15 @@
 #include "Primitive.h"
 
 Renderer::Renderer(void)
-    :d3d9_(nullptr),
-    d3d_device_(nullptr),
-    d3d_backbuffer_(nullptr),
-    width_(0),
-    height_(0),
-    pitch_(0),
-    buffer_(nullptr)
+    :d3d9_(nullptr)
+    ,d3d_device_(nullptr)
+    ,d3d_backbuffer_(nullptr)
+    ,width_(0)
+    ,height_(0)
+    ,pitch_(0)
+    ,buffer_(nullptr)
+    ,backface_culling_(false)
+    ,z_buffer_(nullptr)
 {
 }
 
@@ -68,6 +70,8 @@ void Renderer::Initialize(HWND hwnd, int width, int height)
         return;
     }
 
+    z_buffer_ = new float[width_ * height_];
+
     LOGFONT lfont;
     memset(&lfont, 0, sizeof(lfont));
     lfont.lfHeight = 12;
@@ -80,6 +84,12 @@ void Renderer::Initialize(HWND hwnd, int width, int height)
 
 void Renderer::Uninitialize(void)
 {
+    if (z_buffer_)
+    {
+        delete[] z_buffer_;
+        z_buffer_ = nullptr;
+    }
+
     DeleteObject(font_);
     SafeRelease(&d3d_backbuffer_);
     SafeRelease(&d3d_device_);
@@ -110,14 +120,14 @@ inline void Renderer::DrawLine(Point p0, Point p1, uint32 c)
     float x = static_cast<float>(p0.x);
     float y = static_cast<float>(p0.y);
 
-    if (0 <= x && x <= width_ && 0 <= y && y <= height_)
-        DrawPixel(round(x), round(y), c);
+//    if (0 <= x && x <= width_ && 0 <= y && y <= height_)
+    DrawPixel(round(x), round(y), c);
     for (int k = 0; k < steps; ++k)
     {
         x += x_inc;
         y += y_inc;
-        if (0 <= x && x <= width_ && 0 <= y && y <= height_)
-            DrawPixel(round(x), round(y), c);
+//        if (0 <= x && x <= width_ && 0 <= y && y <= height_)
+        DrawPixel(round(x), round(y), c);
     }
 }
 
@@ -137,6 +147,7 @@ void Renderer::BeginFrame(void)
 
     rend_primitive_.Clear();
     triangles_.clear();
+    memset(z_buffer_, 0, width_ * height_ * sizeof(float));
 }
 
 void Renderer::EndFrame(void)
@@ -172,8 +183,8 @@ void Renderer::DrawPrimitive(Primitive *primitive)
 
     ModelViewTransform();
     PerspectiveProjection();
-    Clipping();
     ViewportTransform();
+    Clipping(Vector3(0, 0, 0), Vector3(width_, height_, 1.0f));
     Rasterization();
 }
 
@@ -198,64 +209,221 @@ void Renderer::PerspectiveProjection()
     }
 }
 
-static bool in_cvv(const Vector4 &p, float w)
-{
-    if (p.x > w || p.x < -w)
-        return false;
-    if (p.y > w || p.y < -w)
-        return false;
-    if (p.z > w || p.z < 0)
-        return false;
-    return true;
-}
-
-void Renderer::Clipping()
-{
-    assert((rend_primitive_.size % 3) == 0);
-    // (rand_primitive_.size / 3) 向下截断
-    for (int i = 0; i < (rend_primitive_.size / 3); ++i)
-    {
-        Vector4 &p0 = rend_primitive_.vertexes[i];
-        Vector4 &p1 = rend_primitive_.vertexes[i + 1];
-        Vector4 &p2 = rend_primitive_.vertexes[i + 2];
-        int vertex_in_cvv = 0;
-
-        if (in_cvv(p0, p0.w))
-            ++vertex_in_cvv;
-        if (in_cvv(p1, p1.w))
-            ++vertex_in_cvv;
-        if (in_cvv(p2, p2.w))
-            ++vertex_in_cvv;
-
-        if (vertex_in_cvv == 0)
-            continue;
-
-        Triangle tri(p0, p1, p2);
-        triangles_.push_back(tri);
-    }
-}
-
 void Renderer::ViewportTransform()
 {
     const int width_div2 = width_ / 2;
     const int height_div2 = height_ / 2;
-    for (int i = 0; i < triangles_.size(); ++i)
+
+    for (int i = 0; i < rend_primitive_.size; ++i)
     {
-        for (int j = 0; j < 3; ++j)
-        {
-            // 透视除法
-            triangles_[i].p[j] = (1 / triangles_[i].p[j].w) * triangles_[i].p[j];
-            triangles_[i].p[j].x *= width_div2;
-            triangles_[i].p[j].x += width_div2;
-            triangles_[i].p[j].y *= -height_div2;
-            triangles_[i].p[j].y += height_div2;
-        }
+        Vector4 &vertex = rend_primitive_.vertexes[i];
+        float div = 1.0f / vertex.w;
+        // 透视除法, 将对象变换至cvv
+        vertex = vertex * div;
+        // 将[x,y]变换至[width,height]的范围
+        vertex.x *= width_div2;
+        vertex.x += width_div2;
+        vertex.y *= -height_div2;
+        vertex.y += height_div2;
     }
 }
 
-//static void ClipLine2d(Point &p0, Point &p1, int left, int right, int top, int bottom)
-//{
-//}
+bool Renderer::ClipLine3d(const Vector4 &beg, const Vector4 &end,
+                          const Vector3 &w_min, const Vector3 &w_max, Vector4 *res)
+{
+    assert(res);
+
+    static const int BUF_SIZE = 6;
+
+    float x0 = beg.x;
+    float y0 = beg.y;
+    float z0 = beg.z; 
+    float x_dt = end.x - beg.x;
+    float y_dt = end.y - beg.y;
+    float z_dt = end.z - beg.z;
+
+    float p[BUF_SIZE] = {0};
+    float q[BUF_SIZE] = {0};
+
+    p[0] = -x_dt;
+    q[0] = x0 - w_min.x;
+
+    p[1] = x_dt;
+    q[1] = w_max.x - x0;
+
+    p[2] = -y_dt;
+    q[2] = y0 - w_min.y;
+
+    p[3] = y_dt;
+    q[3] = w_max.y - y0;
+
+    p[4] = -z_dt;
+    q[4] = z0 - w_min.z; // 
+
+    p[5] = z_dt;
+    q[5] = w_max.z - z0;
+
+    float u1 = 0.0f;
+    float u2 = 1.0f;
+
+    for (int i = 0; i < BUF_SIZE; ++i)
+    {
+        if (equalf(p[i], 0))
+        {
+            if (q[i] < 0)
+                return false;
+            continue;
+        }
+        float r = q[i] / p[i];
+        // max of, from out to in.
+        if (u1 < r && p[i] < 0)
+        {
+            u1 = r;
+        }
+        // min of, from in to out.
+        if (u2 > r && p[i] > 0)
+        {
+            u2 = r;
+        }
+    }
+
+    if (u1 > u2)
+    {
+        assert(false);
+        return false;
+    } 
+    else
+    {
+        if (equalf(u1, 0))
+        {
+            *res = beg + (u2 * Vector4(x_dt, y_dt, z_dt, 0));
+        }
+        else if (equalf(u2, 1))
+        {
+            *res = beg + (u1 * Vector4(x_dt, y_dt, z_dt, 0));
+        }
+        res->x = static_cast<int>(res->x);
+        res->y = static_cast<int>(res->y);
+        res->z = static_cast<int>(res->z);
+        assert(w_min.x <= res->x);
+        assert(res->x <= w_max.x);
+        assert(w_min.y <= res->y);
+        assert(res->y <= w_max.y);
+        assert(w_min.z <= res->z);
+        assert(res->z <= w_max.z);
+        return true;
+    }
+    assert(false);
+    return false;
+}
+
+void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
+{
+    assert((rend_primitive_.size % 3) == 0);
+    // (rand_primitive_.size / 3) 向下截断
+
+    static const int TRIANGLE_SIZE = 3;
+    for (int i = 0; i < rend_primitive_.size; i += 3)
+    {
+        int vertex_in_cvv = 0;
+        bool vertex_in_ccodes[TRIANGLE_SIZE] = {true, true, true};
+
+        for (int j = 0; j < TRIANGLE_SIZE; ++j)
+        {
+            Vector4 &p0 = rend_primitive_.vertexes[i + j];
+            if (p0.x < w_min.x || p0.x > w_max.x)
+                vertex_in_ccodes[j] = false;
+            if (p0.y < w_min.y || p0.y > w_max.y)
+                vertex_in_ccodes[j] = false;
+            if (p0.z < w_min.z || p0.z > w_max.z)
+                vertex_in_ccodes[j] = false;
+            if (vertex_in_ccodes[j])
+            {
+                ++vertex_in_cvv;
+            }
+        }
+
+        Vector4 *vtx = rend_primitive_.vertexes + i;
+        
+        Vector3 a = vtx[0].GetVector3();
+        Vector3 b = vtx[1].GetVector3();
+        Vector3 c = vtx[2].GetVector3();                                                        
+
+        Vector3 n = CrossProduct(b - a, c - b);
+        // FIXME 背面剔除，需确定判断是否正确
+        if (backface_culling_ && n.z < 0)
+        {
+            continue;
+        }
+
+        int v0 = 0;
+        int v1 = 1;
+        int v2 = 2;
+        if (vertex_in_cvv == 0)
+        {
+            continue;
+        }
+        else if (vertex_in_cvv == 1)
+        {
+            if (vertex_in_ccodes[0])
+            {
+
+            }
+            else if (vertex_in_ccodes[1])
+            {
+                v0 = 1; v1 = 2; v2 = 0;
+            }
+            else if (vertex_in_ccodes[2])
+            {
+                v0 = 2; v1 = 0; v2 = 1;
+            }
+            // make v0 is in. v1, v2 is out.
+            bool ret = false;
+            ret = ClipLine3d(vtx[v0], vtx[v1], w_min, w_max, &vtx[v1]);
+            assert(ret);
+            ret = ClipLine3d(vtx[v0], vtx[v2], w_min, w_max, &vtx[v2]);
+            assert(ret);
+            Triangle tri(vtx[v0], vtx[v1], vtx[v2]);
+            triangles_.push_back(tri);
+        }
+        else if (vertex_in_cvv == 2)
+        {
+            if (!vertex_in_ccodes[0])
+            {
+//                v0 = 0; v1 = 1; v2 = 2;
+            }
+            else if (!vertex_in_ccodes[1])
+            {
+                v0 = 1; v1 = 2; v2 = 0;
+            }
+            else if (!vertex_in_ccodes[2])
+            {
+                v0 = 2; v1 = 0; v2 = 1;
+            }
+            // make v0 is out. v1, v2 is in. 
+            Vector4 m;
+            Vector4 n;
+            bool ret = false;
+            ret = ClipLine3d(vtx[v0], vtx[v1], w_min, w_max, &m);
+            assert(ret);
+            ret = ClipLine3d(vtx[v0], vtx[v2], w_min, w_max, &n);
+            assert(ret);
+            Triangle tri0(m, vtx[v1], vtx[v2]);
+            triangles_.push_back(tri0);
+            Triangle tri1(n, vtx[v2], n);
+            triangles_.push_back(tri1);
+        }
+        else if (vertex_in_cvv == 3)
+        {
+            Triangle tri(vtx[v0], vtx[v1], vtx[v2]);
+            triangles_.push_back(tri);
+        }
+        else
+        {
+            assert(0);
+        }
+    }
+}
 
 void Renderer::Rasterization()
 {
@@ -266,7 +434,7 @@ void Renderer::Rasterization()
         Vector3 p2 = triangles_[i].p[2].GetVector3();
 
         DrawLine(Point(p0.x, p0.y), Point(p1.x, p1.y), 0x00ff0000);
-        DrawLine(Point(p1.x, p1.y), Point(p2.x, p2.y), 0x00ff0000);
-        DrawLine(Point(p2.x, p2.y), Point(p0.x, p0.y), 0x00ff0000);
+        DrawLine(Point(p1.x, p1.y), Point(p2.x, p2.y), 0x0000ff00);
+        DrawLine(Point(p2.x, p2.y), Point(p0.x, p0.y), 0x000000ff);
     }
 }

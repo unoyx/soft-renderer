@@ -35,12 +35,12 @@ HWND App::Initialize(HINSTANCE inst, int width, int height)
     wcex.lpszMenuName  = nullptr;
     wcex.hCursor       = LoadCursor(0, IDC_ARROW);
     wcex.hIcon         = LoadIcon(0, IDI_APPLICATION);
-    wcex.lpszClassName = "D2DDemoApp";
+    wcex.lpszClassName = "SRApp";
 
     (void)RegisterClassEx(&wcex);
 
     // Create the window.
-    wnd_ = CreateWindow("D2DDemoApp",
+    wnd_ = CreateWindow("SRApp",
                         "Direct2D Demo App",
                         WS_OVERLAPPED | WS_SYSMENU,
                         CW_USEDEFAULT,
@@ -63,10 +63,10 @@ HWND App::Initialize(HINSTANCE inst, int width, int height)
     input_mgr_.Initialize(inst, wnd_);
     renderer_.Initialize(wnd_, width, height);
 
-    camera_.set_pos(Vector3(0, 0, -2));
+    camera_.set_pos(Vector3(0, 0, -3));
     camera_.set_far(1.0);
     camera_.set_near(-0.5);
-    camera_.set_fov(60);
+    camera_.set_fov(90);
     float aspect = static_cast<float>(width) / static_cast<float> (height);
     camera_.set_aspect(aspect);
 
@@ -116,26 +116,57 @@ void App::Update(void)
 
     input_mgr_.Update();
     
-    int mouse_dx = input_mgr_.GetMouseMovingX();
-    int mouse_dy = input_mgr_.GetMouseMovingY();
 
     if (input_mgr_.KeyDown(DIK_D))
-        camera_.Rotate(0, 3.0 * diff_tick / 100.0);
+        camera_.Rotate(0, 3.0f * diff_tick / 100.0);
     if (input_mgr_.KeyDown(DIK_A))
-        camera_.Rotate(0, -3.0 * diff_tick / 100.0);
+        camera_.Rotate(0, -3.0f * diff_tick / 100.0);
 
     if (input_mgr_.KeyDown(DIK_W))
-        camera_.Move(Vector3(0, 0, 0.5 * diff_tick / 100.0));
+        camera_.Move(Vector3(0, 0, 0.5f * diff_tick / 100.0));
     if (input_mgr_.KeyDown(DIK_S))
-        camera_.Move(Vector3(0, 0, -0.5 * diff_tick / 100.0));
+        camera_.Move(Vector3(0, 0, -0.5f * diff_tick / 100.0));
+
+    if (input_mgr_.KeyDown(DIK_UP))
+        camera_.Rotate(3.0f * diff_tick / 100.0, 0);
+    if (input_mgr_.KeyDown(DIK_DOWN))
+        camera_.Rotate(-3.0f * diff_tick / 100.0, 0);
+
+    static bool bf_culling = true;
+
+    if (input_mgr_.KeyPressed(DIK_B))
+    {
+        renderer_.SetBackfaceCulling(bf_culling);
+        bf_culling = !bf_culling;
+    }
 
 
     renderer_.BeginFrame();
     
-    Primitive primitive(3);
-    primitive.vertexes[0] = Vector3(0, 1, 0);
-    primitive.vertexes[1] = Vector3(1, 0, 0);
-    primitive.vertexes[2] = Vector3(-1, 0, 0);
+    Primitive primitive(18);
+    primitive.vertexes[0] = Vector3(0, 0, -1);
+    primitive.vertexes[1] = Vector3(0, 1, 0);
+    primitive.vertexes[2] = Vector3(1, 0, 0);
+
+    primitive.vertexes[3] = Vector3(1, 0, 0);
+    primitive.vertexes[4] = Vector3(0, 1, 0);
+    primitive.vertexes[5] = Vector3(0, 0, 1);
+
+    primitive.vertexes[6]= Vector3(0, 0, 1);
+    primitive.vertexes[7]= Vector3(0, 1, 0);
+    primitive.vertexes[8]= Vector3(-1, 0, 0);
+
+    primitive.vertexes[9]= Vector3(-1, 0, 0);
+    primitive.vertexes[10]= Vector3(0, 1, 0);
+    primitive.vertexes[11]= Vector3(0, 0, -1);
+
+    primitive.vertexes[12]= Vector3(0, 0, -1);
+    primitive.vertexes[13]= Vector3(1, 0, 0);
+    primitive.vertexes[14]= Vector3(0, 0, 1);
+
+    primitive.vertexes[15]= Vector3(0, 0, -1);
+    primitive.vertexes[16]= Vector3(0, 0, 1);
+    primitive.vertexes[17]= Vector3(-1, 0, 0);
 
     renderer_.SetMatrix(kModelView, camera_.GetModelViewMatrix());
     renderer_.SetMatrix(kPerspective, camera_.GetPerpectivMatrix());
@@ -171,8 +202,7 @@ LRESULT CALLBACK App::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
     }
     else
     {
-        App *pDemoApp = reinterpret_cast<App *>(static_cast<LONG_PTR>(::GetWindowLongPtrW(hwnd,
-                                                                                                  GWLP_USERDATA)));
+        App *pDemoApp = reinterpret_cast<App *>(static_cast<LONG_PTR>(::GetWindowLongPtrW(hwnd, GWLP_USERDATA)));
         if (pDemoApp)
         {
             switch (message)

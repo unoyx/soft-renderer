@@ -1,5 +1,6 @@
 #pragma once
 #include <Windows.h>
+#define DIRECTINPUT_VERSION 2048
 #include <dinput.h>
 
 #define INPUT_MGR_BUF_SIZE 256
