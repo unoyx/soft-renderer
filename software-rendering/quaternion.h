@@ -1,5 +1,5 @@
 #pragma once
-#include "mathdef.h"
+#include "typedef.h"
 #include "vector.h"
 #include "matrix.h"
 #ifdef _DEBUG

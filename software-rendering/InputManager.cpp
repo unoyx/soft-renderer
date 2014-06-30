@@ -5,6 +5,8 @@ InputManager::InputManager(void)
     :input_(nullptr)
     ,mouse_dev_(nullptr)
     ,keyboard_dev_(nullptr)
+    ,x_acc_(0)
+    ,y_acc_(0)
 {
     memset(&mouse_state_, 0, sizeof(mouse_state_));
     memset(key_state_, 0, sizeof(key_state_));
@@ -84,6 +86,8 @@ void InputManager::Update()
         // try and reacquire the input device
         keyboard_dev_->Acquire();
     }
+    x_acc_ += mouse_state_.lX;
+    y_acc_ += mouse_state_.lY;
 }
 
 //
@@ -104,6 +108,16 @@ int InputManager::GetMouseMovingX()
 int InputManager::GetMouseMovingY() 
 {
     return mouse_state_.lY; 
+}
+
+int InputManager::GetMouseX(void)
+{
+    return x_acc_;
+}
+
+int InputManager::GetMouseY(void)
+{
+    return y_acc_;
 }
 
 //   PURPOSE: Gets the state of the keyboard and mouse, if the device has been lost it trys to reaquire it

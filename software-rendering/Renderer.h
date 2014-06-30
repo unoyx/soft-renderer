@@ -8,6 +8,7 @@
 #include "matrix.h"
 #include "util.h"
 #include "Logger.h"
+#include "Light.h"
 #include "Primitive.h"
 
 using std::string;
@@ -17,6 +18,13 @@ enum MatrixType
 {
     kModelView = 0,
     kPerspective = 1
+};
+
+enum LightingType
+{
+    kNoLight = 0,
+    kFlat = 1,
+    kGouraud = 2
 };
 
 class Renderer
@@ -33,7 +41,8 @@ public:
 
     void DrawPixel(int x, int y, uint32 c)
     {
-        int idx = y * pitch_ / 4 + x;
+        int idx = y * (pitch_ / 4) + x;
+        Logger::GtLogInfo("idx %d", idx);
         buffer_[idx] = c;
     }
 
@@ -70,7 +79,9 @@ public:
     void SetMatrix(MatrixType t, const Matrix44 m);
 
     // TODO 设置光源
-    void SetLight();
+    void SetLight(Light *light);
+
+    void SetLightingMode(LightingType t);
 
     // TODO 变换物体坐标至视图空间 *
     void ModelViewTransform(void);
@@ -87,13 +98,15 @@ public:
     void Lighting(void);
 
     // TODO 透视投影 *
-    void PerspectiveProjection(void);
+    void Projection(void);
 
     // TODO 裁剪 *
     void Clipping(const Vector3 &w_min, const Vector3 &w_max);
 
     // TODO 视口变换 *
     void ViewportTransform(void);
+
+    void ScreenMapping(void);
 
     // TODO 光栅化 *
     void Rasterization(void);
@@ -106,6 +119,9 @@ public:
         flat_ = flag;
     }
 private:
+    void draw_line(Point p0, Point p1, uint32 c);
+    void BresenhamLine(Point p0, Point p1, uint32 c);
+
     bool ClipLine3d(const Vector4 &beg, const Vector4 &end, 
                     const Vector3 &w_min, const Vector3 &w_max, Vector4 *res);
 
@@ -121,6 +137,7 @@ private:
     IDirect3DSurface9 *d3d_backbuffer_;
 
     bool backface_culling_;
+    LightingType light_type_;
 
     int width_;
     int height_;
@@ -133,7 +150,7 @@ private:
     
     Matrix44 model_view_;
     Matrix44 perspective_;
-//    Light light_;
+    Light *light_;
     RendPrimitive rend_primitive_;
     std::vector<Triangle> triangles_;
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "mathdef.h"
+#include "typedef.h"
 #ifdef _DEBUG
 #include "Logger.h"
 #endif
@@ -212,12 +212,27 @@ public:
         return Vector3(x + v.x, y + v.y, z + v.z);
     }
 
+    Vector3 operator+(const Vector3& v) 
+    {
+        return Vector3(x + v.x, y + v.y, z + v.z);
+    }
+
     Vector3 operator-(const Vector3& v) const
     {
         return Vector3(x - v.x, y - v.y, z - v.z);
     }
 
+    Vector3 operator-(const Vector3& v) 
+    {
+        return Vector3(x - v.x, y - v.y, z - v.z);
+    }
+
     Vector3 operator*(const Vector3& v) const
+    {
+        return Vector3(x * v.x, y * v.y, z * v.z);
+    }
+
+    Vector3 operator*(const Vector3& v)
     {
         return Vector3(x * v.x, y * v.y, z * v.z);
     }
@@ -251,6 +266,12 @@ public:
             z *= one_over_mag;
         }
     }
+
+    float Magnitude(void)
+    {
+        return sqrtf(x * x + y * y + z * z);
+    }
+
 #ifdef _DEBUG
     void Display(void) const
     {
@@ -419,7 +440,7 @@ inline Vector4 operator*(float s, const Vector4& v)
     return Vector4(s * v.x, s * v.y, s * v.z, s * v.w);
 }
 
-inline Vector3 CrossProduct(const Vector3 &lhs, const Vector3 &rhs)
+static inline Vector3 CrossProduct(const Vector3 &lhs, const Vector3 &rhs)
 {
     return Vector3(lhs.y * rhs.z - lhs.z * rhs.y,
                    lhs.z * rhs.x - lhs.x * rhs.z,

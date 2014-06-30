@@ -12,7 +12,9 @@ Renderer::Renderer(void)
     ,buffer_(nullptr)
     ,backface_culling_(false)
     ,z_buffer_(nullptr)
+    ,light_(nullptr)
     ,flat_(false)
+    ,light_type_(kNoLight)
 {
 }
 
@@ -35,7 +37,7 @@ void Renderer::Initialize(HWND hwnd, int width, int height)
 
     params.BackBufferWidth = width;
     params.BackBufferHeight = height;
-    params.BackBufferFormat = D3DFMT_A8R8G8B8;
+    params.BackBufferFormat = D3DFMT_X8R8G8B8;
     params.BackBufferCount = 0;
     params.MultiSampleType = D3DMULTISAMPLE_NONE;
     params.MultiSampleQuality = 0;
@@ -43,10 +45,10 @@ void Renderer::Initialize(HWND hwnd, int width, int height)
     params.hDeviceWindow = hwnd;
     params.Windowed = TRUE;
     params.EnableAutoDepthStencil = false;
-    // params.AutoDepthStencilFormat = 
+    params.AutoDepthStencilFormat = D3DFMT_D16;
     params.Flags = D3DPRESENTFLAG_LOCKABLE_BACKBUFFER;
     // params.FullScreen_RefreshRateInHz =
-    params.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+    params.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
 
     HRESULT hr = d3d9_->CreateDevice(D3DADAPTER_DEFAULT,
         D3DDEVTYPE_HAL,
@@ -98,7 +100,7 @@ void Renderer::Uninitialize(void)
 }
 
 // DDA 画线, 包括两端点 
-inline void Renderer::DrawLine(Point p0, Point p1, uint32 c)
+void Renderer::DrawLine(Point p0, Point p1, uint32 c)
 {
 //    assert(0 <= p0.x && p0.x <= width_);
 //    assert(0 <= p1.y && p1.y <= height_);
@@ -128,8 +130,10 @@ inline void Renderer::DrawLine(Point p0, Point p1, uint32 c)
 
     int x_step = (dx > 0) ? 1 : -1;
     int y_step = (dy > 0) ? 1 : -1;
-
+    Logger::GtLogInfo("start x,y : %d,%d", p0.x, p0.y);
+    Logger::GtLogInfo("end x,y : %d,%d", p1.x, p1.y);
     DrawPixel(x, y, c);
+    Logger::GtLogInfo("x,y : %d,%d", x, y);
     for (int k = 0; k < steps; ++k)
     {
         x_m += x_inc;
@@ -144,8 +148,93 @@ inline void Renderer::DrawLine(Point p0, Point p1, uint32 c)
             y_m -= steps;
             y += y_step;
         }
+        Logger::GtLogInfo("x,y : %d,%d", x, y);
         DrawPixel(x, y, c);
     }
+}
+
+void Renderer::BresenhamLine(Point p0, Point p1, uint32 c)
+{
+    bool steep = abs(p1.y - p0.y) > abs(p1.x - p0.x);
+    if (steep)
+    {
+        swap(p0.x, p0.y);
+        swap(p1.x, p1.y);
+    }
+    if (p0.x > p1.x)
+    {
+        swap(p0.x, p1.x);
+        swap(p0.y, p1.y);
+    }
+    int dx = p1.x - p0.x;
+    int dy = abs(p1.y - p0.y);
+    int err = dx / 2;
+    int y_inc = (p0.y < p1.y) ? 1 : -1;
+    int y = p0.y;
+    for (int x = p0.x; x < p1.x; ++x)
+    {
+        if (steep)
+        {
+            DrawPixel(y, x, c);
+        }
+        else
+        {
+            DrawPixel(x, y, c);
+        }
+        err -= dy;
+        if (err < 0)
+        {
+            y += y_inc;
+            err += dx;
+        }
+    }
+
+}
+
+void Renderer::draw_line(Point p0, Point p1, uint32 c) {
+	// 参数 c 为颜色值
+	int dx = abs(p1.x - p0.x),
+		dy = abs(p1.y - p0.y),
+		yy = 0;
+
+	if (dx < dy) {
+		yy = 1;
+		swap(p0.x, p0.y);
+		swap(p1.x, p1.y);
+		swap(dx, dy);
+	}
+
+	int ix = (p1.x - p0.x) > 0 ? 1 : -1,
+		 iy = (p1.y - p0.y) > 0 ? 1 : -1,
+		 cx = p0.x,
+		 cy = p0.y,
+		 n2dy = dy * 2,
+		 n2dydx = (dy - dx) * 2,
+		 d = dy * 2 - dx;
+
+	if (yy) { // 如果直线与 x 轴的夹角大于 45 度
+		while (cx != p1.x) {
+			if (d < 0) {
+				d += n2dy;
+			} else {
+				cy += iy;
+				d += n2dydx;
+			}
+			DrawPixel(cy, cx, c);
+			cx += ix;
+		}
+	} else { // 如果直线与 x 轴的夹角小于 45 度
+		while (cx != p1.x) {
+			if (d < 0) {
+				d += n2dy;
+			} else {
+				cy += iy;
+				d += n2dydx;
+			}
+			DrawPixel(cx, cy, c);
+			cx += ix;
+		}
+	}
 }
 
 void Renderer::BeginFrame(void)
@@ -190,60 +279,86 @@ void Renderer::SetMatrix(MatrixType t, const Matrix44 m)
 
 void Renderer::DrawPrimitive(Primitive *primitive)
 {
-    rend_primitive_ = RendPrimitive(primitive->size);
+    //rend_primitive_ = RendPrimitive(primitive->size, primitive->material);
 
-    for (int i = 0; i < rend_primitive_.size; ++i)
-    {
-        rend_primitive_.vertexes[i].SetVector3(primitive->vertexes[i]);
-        rend_primitive_.vertexes[i].w = 1.0f;
-    }
+    //for (int i = 0; i < rend_primitive_.size; ++i)
+    //{
+    //    rend_primitive_.position[i].SetVector3(primitive->position[i]);
+    //    rend_primitive_.position[i].w = 1.0f;
+    //    rend_primitive_.normals[i].SetVector3(primitive->normals[i]);
+    //    rend_primitive_.normals[i].w = 0.0f;
+    //    rend_primitive_.colors[i] = primitive->colors[i];
+    //}
 
-    ModelViewTransform();
-    PerspectiveProjection();
-    ViewportTransform();
-    Clipping(Vector3(0, 0, 0), Vector3(width_, height_, 1.0f));
-    Rasterization();
+    //ModelViewTransform();
+    //// Lighting();
+    //Projection();
+    //Clipping(Vector3(-1, -1, 0), Vector3(1, 1, 1.0f));
+    //Rasterization();
 }
 
 // rend_primitive 相机空间
-void Renderer::ModelViewTransform()
+void Renderer::ModelViewTransform(void)
 {
     for (int i = 0; i < rend_primitive_.size; ++i)
     {
-        rend_primitive_.vertexes[i] = rend_primitive_.vertexes[i] * model_view_;
+        Vector4 &position = rend_primitive_.position[i];
+        position = position * model_view_;
+        Vector4 &normal = rend_primitive_.normals[i];
+        normal = normal * model_view_;
     }
 }
 
-//void Renderer::BackfaceCulling()
+//void Renderer::Lighting(void)
 //{
+//    Material &mat = *rend_primitive_.material;
 //
+//    if (light_type_ == kNoLight)
+//    {
+//        return;
+//    }
+//    else if (light_type_ == kFlat)
+//    {
+//
+//    }
+//    else if (light_type_ == kGouraud)
+//    {
+//        for (int i = 0; i < rend_primitive_.size; ++i)
+//        {
+//            Vector3 L = rend_primitive_.position[i].GetVector3() - light_->position;
+//            float dist = L.Magnitude();
+//            L.Normalize();
+//            Vector3 N = rend_primitive_.normals[i].GetVector3();
+//            float cos_ang = L * N;
+//            if (cos_ang < 0)
+//            {
+//                continue;
+//            }
+//            // 光强
+//            float I = 1 / (light_->attenuation0 + light_->attenuation1 * dist + light_->attenuation2 * dist * dist);
+//            // 环境光
+//            Vector4 ambColor = light_->ambient * mat.ambient * I;
+//            // 漫反射
+//            float angle = N * L;
+//            angle = max_t(angle, 0);
+//            Vector4 difColor = light_->diffuse * mat.diffuse * angle * I;
+//            Vector4 speColor = light_->specular * mat.specular * powf(angle, mat.specular.w) * I;
+//            rend_primitive_.colors[i] = ambColor + difColor + speColor;
+//        }
+//    }
 //}
-// rend_primitive [N/R*x, N/T*y, F(z-N)/(F-N), z]
-void Renderer::PerspectiveProjection()
+
+// rend_primitive [N/R*x, N/T*y, F(z-N)/(F-N), z] / z
+// 做完透视裁减，将图像变换至cvv
+void Renderer::Projection(void)
 {
     for (int i = 0; i < rend_primitive_.size; ++i)
     {
-        rend_primitive_.vertexes[i] = rend_primitive_.vertexes[i] * perspective_;
-    }
-}
-
-// 透视裁剪，并将对象变换至视口
-void Renderer::ViewportTransform()
-{
-    const int width_div2 = width_ / 2;
-    const int height_div2 = height_ / 2;
-
-    for (int i = 0; i < rend_primitive_.size; ++i)
-    {
-        Vector4 &vertex = rend_primitive_.vertexes[i];
-        float div = 1.0f / vertex.w;
-        // 透视除法, 将对象变换至cvv
-        vertex = vertex * div;
-        // 将[x,y]变换至[width,height]的范围
-        vertex.x *= width_div2;
-        vertex.x += width_div2;
-        vertex.y *= -height_div2;
-        vertex.y += height_div2;
+        Vector4 &position = rend_primitive_.position[i];
+        position = position * perspective_;
+        // FIXME 应该在进行裁剪以后做透视除法
+        float div = 1 / abs(position.w);
+        position *= div;
     }
 }
 
@@ -321,25 +436,19 @@ bool Renderer::ClipLine3d(const Vector4 &beg, const Vector4 &end,
         {
             *res = beg + (u1 * Vector4(x_dt, y_dt, z_dt, 0));
         }
-        res->x = static_cast<int>(res->x);
-        res->y = static_cast<int>(res->y);
-        res->z = static_cast<int>(res->z);
-        assert(w_min.x <= res->x);
-        assert(res->x <= w_max.x);
-        assert(w_min.y <= res->y);
-        assert(res->y <= w_max.y);
-        assert(w_min.z <= res->z);
-        assert(res->z <= w_max.z);
+        // 有计算误差
+        res->x = clamp(res->x, w_min.x, w_max.x);
+        res->y = clamp(res->y, w_min.y, w_max.y);
         return true;
     }
     assert(false);
     return false;
 }
 
-// 背面剔除，裁剪
+// 背面剔除，裁剪，透视除法
 void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
 {
-    assert((rend_primitive_.size % 3) == 0);
+//    assert((rend_primitive_.size % 3) == 0);
     // (rand_primitive_.size / 3) 向下截断
 
     static const int TRIANGLE_SIZE = 3;
@@ -350,7 +459,8 @@ void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
 
         for (int j = 0; j < TRIANGLE_SIZE; ++j)
         {
-            Vector4 &p0 = rend_primitive_.vertexes[i + j];
+            Vector4 &p0 = rend_primitive_.position[i + j];
+
             if (p0.x < w_min.x || p0.x > w_max.x)
                 vertex_in_ccodes[j] = false;
             if (p0.y < w_min.y || p0.y > w_max.y)
@@ -363,7 +473,7 @@ void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
             }
         }
 
-        Vector4 *vtx = rend_primitive_.vertexes + i;
+        Vector4 *vtx = rend_primitive_.position + i;
         
         Vector3 a = vtx[0].GetVector3();
         Vector3 b = vtx[1].GetVector3();
@@ -371,7 +481,7 @@ void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
 
         Vector3 n = CrossProduct(b - a, c - b);
         // FIXME 背面剔除，需确定判断是否正确
-        if (backface_culling_ && n.z < 0)
+        if (backface_culling_ && n.z > 0)
         {
             continue;
         }
@@ -450,10 +560,22 @@ void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
 // 直接光栅化，对象已在视口内
 void Renderer::Rasterization()
 {
+    const int width_div2 = width_ / 2;
+    const int height_div2 = height_ / 2;
+    
     for (int i = 0; i < triangles_.size(); ++i)
     {
         const uint32 c[3] = {0x00ff0000, 0x0000ff00, 0x000000ff};
         static int k = 0;
+
+        // 将[x,y]变换至[width,height]的范围
+        for (int j = 0; j < 3; ++j)
+        {
+            triangles_[i].p[j].x *= width_div2;
+            triangles_[i].p[j].x += width_div2;
+            triangles_[i].p[j].y *= -height_div2;
+            triangles_[i].p[j].y += height_div2;
+        }
 
         if (flat_)
         {
@@ -465,10 +587,13 @@ void Renderer::Rasterization()
             Vector3 p0 = triangles_[i].p[0].GetVector3();
             Vector3 p1 = triangles_[i].p[1].GetVector3();
             Vector3 p2 = triangles_[i].p[2].GetVector3();
-
-            DrawLine(Point(p0.x, p0.y), Point(p1.x, p1.y), 0x00ff0000);
-            DrawLine(Point(p1.x, p1.y), Point(p2.x, p2.y), 0x0000ff00);
-            DrawLine(Point(p2.x, p2.y), Point(p0.x, p0.y), 0x000000ff);
+            
+            uint32 red = ARGB32(255, 200, 0, 0);
+            uint32 green = ARGB32(255, 0, 200, 0);
+            uint32 blue = ARGB32(255, 0, 0, 200);
+            draw_line(Point(p0.x, p0.y), Point(p1.x, p1.y), red);
+            draw_line(Point(p1.x, p1.y), Point(p2.x, p2.y), green);
+            draw_line(Point(p2.x, p2.y), Point(p0.x, p0.y), blue);
         }
     }
 }
@@ -577,4 +702,23 @@ void Renderer::FlatTriangleDown(const Vector3 &v0, const Vector3 &v1, const Vect
         sx += dx_left;
         ex += dx_right;
     }
+}
+
+void Renderer::SetLight(Light *light)
+{
+    light_ = light;
+}
+
+void Renderer::Lighting(void)
+{
+    for (int i = 0; i < rend_primitive_.size; ++i)
+    {
+        Vector4 &vertex = rend_primitive_.position[i];
+
+    }
+}
+
+void Renderer::SetLightingMode(LightingType t)
+{
+    light_type_ = t;
 }

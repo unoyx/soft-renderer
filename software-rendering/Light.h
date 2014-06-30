@@ -12,8 +12,7 @@ public:
     float attenuation1;
     float attenuation2;
 
-    Light(void): attenuation0(0.0f), attenuation1(0.0f), attenuation2(0.0f){}
-
-    ~Light(void);
+    Light(void): attenuation0(0.0f), attenuation1(0.0f), attenuation2(0.0f) {}
+    ~Light(void) {}
 };
 

@@ -159,31 +159,42 @@ void App::Update(void)
     }
 
     renderer_.BeginFrame();
+
+    //Primitive primitive(1);
+    //primitive.vertexes[0] = Vector3(0, 0, -4);
+
+    Point p0(200, 200);
+    Point p1;
+//    p1.x = input_mgr_.GetMouseX() + width_ / 2;
+//    p1.y = input_mgr_.GetMouseY() + height_ / 2;
+    p1.x = 200;
+    p1.y = 347;
+    renderer_.DrawLine(p0, p1, ARGB32(255, 250, 50, 50));
     
-    Primitive primitive(18);
-    primitive.vertexes[0] = Vector3(0, 0, -1);
-    primitive.vertexes[1] = Vector3(0, 1, 0);
-    primitive.vertexes[2] = Vector3(1, 0, 0);
+    Primitive primitive(18, nullptr);
+    primitive.position[0] = Vector3(0, 0, -1);
+    primitive.position[1] = Vector3(0, 1, 0);
+    primitive.position[2] = Vector3(1, 0, 0);
 
-    primitive.vertexes[3] = Vector3(1, 0, 0);
-    primitive.vertexes[4] = Vector3(0, 1, 0);
-    primitive.vertexes[5] = Vector3(0, 0, 1);
+    primitive.position[3] = Vector3(1, 0, 0);
+    primitive.position[4] = Vector3(0, 1, 0);
+    primitive.position[5] = Vector3(0, 0, 1);
 
-    primitive.vertexes[6]= Vector3(0, 0, 1);
-    primitive.vertexes[7]= Vector3(0, 1, 0);
-    primitive.vertexes[8]= Vector3(-1, 0, 0);
+    primitive.position[6]= Vector3(0, 0, 1);
+    primitive.position[7]= Vector3(0, 1, 0);
+    primitive.position[8]= Vector3(-1, 0, 0);
 
-    primitive.vertexes[9]= Vector3(-1, 0, 0);
-    primitive.vertexes[10]= Vector3(0, 1, 0);
-    primitive.vertexes[11]= Vector3(0, 0, -1);
+    primitive.position[9]= Vector3(-1, 0, 0);
+    primitive.position[10]= Vector3(0, 1, 0);
+    primitive.position[11]= Vector3(0, 0, -1);
 
-    primitive.vertexes[12]= Vector3(0, 0, -1);
-    primitive.vertexes[13]= Vector3(1, 0, 0);
-    primitive.vertexes[14]= Vector3(0, 0, 1);
+    primitive.position[12]= Vector3(0, 0, -1);
+    primitive.position[13]= Vector3(1, 0, 0);
+    primitive.position[14]= Vector3(0, 0, 1);
 
-    primitive.vertexes[15]= Vector3(0, 0, -1);
-    primitive.vertexes[16]= Vector3(0, 0, 1);
-    primitive.vertexes[17]= Vector3(-1, 0, 0);
+    primitive.position[15]= Vector3(0, 0, -1);
+    primitive.position[16]= Vector3(0, 0, 1);
+    primitive.position[17]= Vector3(-1, 0, 0);
 
     renderer_.SetMatrix(kModelView, camera_.GetModelViewMatrix());
     renderer_.SetMatrix(kPerspective, camera_.GetPerpectivMatrix());

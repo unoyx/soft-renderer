@@ -1,11 +1,11 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+�?<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="源文件">
+    <Filter Include="源文�?">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="头文件">
+    <Filter Include="头文�?">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
@@ -22,25 +22,25 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
-      <Filter>源文件</Filter>
+      <Filter>源文�?</Filter>
     </ClCompile>
     <ClCompile Include="App.cpp">
-      <Filter>源文件</Filter>
+      <Filter>源文�?</Filter>
     </ClCompile>
     <ClCompile Include="Renderer.cpp">
-      <Filter>源文件</Filter>
+      <Filter>源文�?</Filter>
     </ClCompile>
     <ClCompile Include="Logger.cpp">
-      <Filter>源文件</Filter>
+      <Filter>源文�?</Filter>
     </ClCompile>
     <ClCompile Include="Primitive.cpp">
-      <Filter>源文件</Filter>
+      <Filter>源文�?</Filter>
     </ClCompile>
     <ClCompile Include="Camera.cpp">
-      <Filter>源文件</Filter>
+      <Filter>源文�?</Filter>
     </ClCompile>
     <ClCompile Include="Light.cpp">
-      <Filter>源文件</Filter>
+      <Filter>源文�?</Filter>
     </ClCompile>
     <ClCompile Include="quaternion.cpp">
       <Filter>math</Filter>
@@ -49,33 +49,33 @@
       <Filter>math</Filter>
     </ClCompile>
     <ClCompile Include="Fragment.cpp">
-      <Filter>源文件</Filter>
+      <Filter>源文�?</Filter>
     </ClCompile>
     <ClCompile Include="InputManager.cpp">
-      <Filter>源文件</Filter>
+      <Filter>源文�?</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h">
-      <Filter>头文件</Filter>
+      <Filter>头文�?</Filter>
     </ClInclude>
     <ClInclude Include="Renderer.h">
-      <Filter>头文件</Filter>
+      <Filter>头文�?</Filter>
     </ClInclude>
     <ClInclude Include="util.h">
-      <Filter>头文件</Filter>
+      <Filter>头文�?</Filter>
     </ClInclude>
     <ClInclude Include="Logger.h">
-      <Filter>头文件</Filter>
+      <Filter>头文�?</Filter>
     </ClInclude>
     <ClInclude Include="Primitive.h">
-      <Filter>头文件</Filter>
+      <Filter>头文�?</Filter>
     </ClInclude>
     <ClInclude Include="Camera.h">
-      <Filter>头文件</Filter>
+      <Filter>头文�?</Filter>
     </ClInclude>
     <ClInclude Include="Light.h">
-      <Filter>头文件</Filter>
+      <Filter>头文�?</Filter>
     </ClInclude>
     <ClInclude Include="vector.h">
       <Filter>math</Filter>
@@ -90,10 +90,13 @@
       <Filter>math</Filter>
     </ClInclude>
     <ClInclude Include="Fragment.h">
-      <Filter>头文件</Filter>
+      <Filter>头文�?</Filter>
     </ClInclude>
     <ClInclude Include="InputManager.h">
-      <Filter>头文件</Filter>
+      <Filter>头文�?</Filter>
+    </ClInclude>
+    <ClInclude Include="typedef.h">
+      <Filter>math</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

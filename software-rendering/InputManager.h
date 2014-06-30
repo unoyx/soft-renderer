@@ -22,6 +22,8 @@ public:
     void Update(void);
     int GetMouseMovingX(void);
     int GetMouseMovingY(void);
+    int GetMouseX(void);
+    int GetMouseY(void);
     bool MouseButtonDown(MouseButton button);
     bool KeyDown(DWORD key);
     bool KeyUp(DWORD key);
@@ -38,5 +40,7 @@ private:
     DIMOUSESTATE mouse_state_;
     UCHAR key_state_[INPUT_MGR_BUF_SIZE];
     UCHAR key_press_state_[INPUT_MGR_BUF_SIZE];
+    int x_acc_;
+    int y_acc_;
 };
 

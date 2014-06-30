@@ -1,69 +1,40 @@
 #pragma once
 
-#include <math.h>
 #include <memory.h>
+#include "typedef.h"
+#include "vector.h"
 
-#ifndef WIN64
-typedef unsigned int uint32;
-typedef int int32;
-#endif
-typedef unsigned char uint8;
 
-static const float gkPi = 3.141592653f;
-
-static const float gkFloatPrecise = 0.0001f;
-
-// radian angle
-static inline float angle2radian(float angle)
+static inline uint32 vector4_to_ARGB32(const Vector4 &c)
 {
-    return gkPi * angle / 180.0f;
+    uint8 a = (uint8)round(c.a * 255);
+    uint8 r = (uint8)round(c.r * 255);
+    uint8 g = (uint8)round(c.g * 255);
+    uint8 b = (uint8)round(c.b * 255);
+    uint32 ret = (a << 24) | (r << 16) | (g << 8) | (b << 0);
+    return ret;
 }
 
-static inline float radian2angle(float radian)
+static inline Vector4 ARGB32_to_vector4(uint32 c)
 {
-    return 180.0f * radian / gkPi;
+    float a = (float)(uint8)(c >> 24);
+    float r = (float)(uint8)(c >> 16);
+    float g = (float)(uint8)(c >> 8);
+    float b = (float)(uint8)(c >> 0);
+    Vector4 ret(a / 255.0f, r / 255.0f, g / 255.0f, b / 255.0f);
+    return ret;
 }
 
-static inline void sincosf(float radian, float *s, float *c)
+static inline uint32 ARGB32(uint8 a, uint8 r, uint8 g, uint8 b)
 {
-    *s = sinf(radian);
-    *c = cosf(radian);
+    uint32 ret = (a << 24) | (r << 16) | (g << 8) | (b << 0);
+    return ret;
 }
 
-template<typename T>
-T min_t(const T &x, const T &y)
+static inline Vector4 clamp(const Vector4 &v, const float min, const float max)
 {
-    return ((x < y) ? x : y);
-}
-
-template<typename T>
-T max_t(const T &x, const T &y)
-{
-    return ((x < y) ? y : x);
-}
-
-template<typename T>
-inline void swap(T& a, T& b)
-{
-    T c = a;
-    a = b;
-    b = c;
-}
-
-inline int round(float f)
-{
-    return static_cast<int>(f + 0.5f);
-}
-
-inline float absf(float x)
-{
-    if (x > 0.0f)
-        return x;
-    else
-        return -x;
-}
-
-inline bool equalf(float a, float b)
-{
-    return (absf(a - b) < gkFloatPrecise);
+    clamp(v.x, min, max);
+    clamp(v.y, min, max);
+    clamp(v.z, min, max);
+    clamp(v.w, min, max);
 }

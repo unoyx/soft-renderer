@@ -2,19 +2,24 @@
 #include "mathdef.h"
 #include "vector.h"
 
-class Vector3;
-class Vector4;
+class Material;
 
 class Primitive
 {
 public:
     Primitive(void)
         :size(size)
-        ,vertexes(nullptr) {}
+        ,position(nullptr)
+        ,normals(nullptr)
+        ,colors(nullptr)
+        ,material(nullptr){}
 
-    Primitive(int size)
+    Primitive(int size, Material *material)
         :size(size)
-        ,vertexes(new Vector3[size]) {}
+        ,position(new Vector3[size])
+        ,normals(new Vector3[size])
+        ,colors(new Vector4[size])
+        ,material(material) {}
 
     ~Primitive(void) 
     {
@@ -23,35 +28,61 @@ public:
 
     Primitive(Primitive &&r)
         :size(r.size)
-        ,vertexes(r.vertexes)
+        ,position(r.position)
+        ,normals(r.normals)
+        ,colors(r.colors)
+        ,material(r.material)
     {
         r.size = 0;
-        r.vertexes = nullptr;
+        r.position = nullptr;
+        r.normals = nullptr;
+        r.colors = nullptr;
+        r.material = nullptr;
     }
 
     Primitive &operator=(Primitive &&rhs)
     {
         Clear();
         size = rhs.size;
-        vertexes = rhs.vertexes;
+        position = rhs.position;
+        normals = rhs.normals;
+        colors = rhs.colors;
+        material = rhs.material;
+
         rhs.size = 0;
-        rhs.vertexes = nullptr;
+        rhs.position = nullptr;
+        rhs.normals = nullptr;
+        rhs.colors = nullptr;
+        rhs.material = nullptr;
     }
 
     void Clear(void)
     {
-        if (vertexes)
+        if (position)
         {
-            delete[] vertexes;
-            vertexes = nullptr;
-            size = 0;
+            delete[] position;
+            position = nullptr;
         }
-    }
+        if (normals)
+        {
+            delete[] normals;
+            normals = nullptr;
+        }
+        if (colors)
+        {
+            delete[] colors;
+            colors = nullptr;
+        }
 
-    Vector3 *vertexes;
-//    Vector3 *normals;
-//    Vector4 *colors;
+        material = nullptr;
+        size = 0;
+    }
+public:
     int size;
+    Vector3 *position;
+    Vector3 *normals;
+    Vector4 *colors;
+    Material *material;
 
 //    Texture *texture;
 //    Light *light;
@@ -64,13 +95,19 @@ private:
 class RendPrimitive
 {
 public:
-    RendPrimitive()
+    RendPrimitive(void)
         :size(0)
-        ,vertexes(nullptr) {}
+        ,position(nullptr)
+        ,normals(nullptr)
+        ,colors(nullptr)
+        ,material(nullptr) {}
 
-    RendPrimitive(int size)
+    RendPrimitive(int size, Material *material)
         :size(size)
-        ,vertexes(new Vector4[size]) {}
+        ,position(new Vector4[size])
+        ,normals(new Vector4[size])
+        ,colors(new Vector4[size])
+        ,material(material) {}
 
     ~RendPrimitive()
     {
@@ -79,39 +116,67 @@ public:
 
     RendPrimitive(RendPrimitive&& r)
         :size(r.size)
-        ,vertexes(r.vertexes)
+        ,position(r.position)
+        ,normals(r.normals)
+        ,colors(r.colors)
+        ,material(material) 
     {
         r.size = 0;
-        r.vertexes = nullptr;
+        r.position = nullptr;
+        r.normals = nullptr;
+        r.colors = nullptr;
+        r.material = nullptr;
     }
 
     RendPrimitive& operator=(RendPrimitive&& rhs)
     {
         Clear();
         size = rhs.size;
-        vertexes = rhs.vertexes;
+        position = rhs.position;
+        normals = rhs.normals;
+        colors = rhs.colors;
+        material = rhs.material;
+
         rhs.size = 0;
-        rhs.vertexes = nullptr;
+        rhs.position = nullptr;
+        rhs.normals = nullptr;
+        rhs.colors = nullptr;
+        rhs.material = nullptr;
         return *this;
     }
 
     void Clear(void)
     {
-        if (vertexes)
+        if (position)
         {
-            delete[] vertexes;
-            vertexes = nullptr;
-            size = 0;
+            delete[] position;
+            position = nullptr;
         }
-    }
+        if (normals)
+        {
+            delete[] normals;
+            normals = nullptr;
+        }
+        if (colors)
+        {
+            delete[] colors;
+            colors = nullptr;
+        }
 
-    Vector4 *vertexes;
-//    Vector3 *normals;
+        material = nullptr;
+        size = 0;
+    }
+public:
+    Vector4 *position;
+    Vector4 *normals;
+    Vector4 *colors;
     int size;
+    Material *material;
 private:
     RendPrimitive(const RendPrimitive&);
     RendPrimitive& operator=(const RendPrimitive&);
 };
+
 
 class Triangle
 {
@@ -126,7 +191,8 @@ public:
     ~Triangle(void) {}
 
     Vector4 p[3];
-//    Vector3 n[3];
+    Vector3 n[3];
+    Vector4 c[3];
 //    Vector2 uv[3][2];
 };
 
