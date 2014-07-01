@@ -7,7 +7,9 @@
 #include "mathdef.h"
 #include "matrix.h"
 #include "Primitive.h"
-#include "Light.h"
+
+class Camera;
+class Light;
 
 using std::string;
 using std::vector;
@@ -74,6 +76,8 @@ public:
 
     // TODO 设置变换用的各个矩阵
     void SetMatrix(MatrixType t, const Matrix44 m);
+
+    void SetCamera(Camera *camera);
 
     // TODO 设置光源
     void SetLight(Light *light);
@@ -146,11 +150,11 @@ private:
     float *z_buffer_;
     HFONT font_;
     
-    Matrix44 model_view_;
-    Matrix44 perspective_;
+    Camera *camera_;
     Light *light_;
     RendPrimitive rend_primitive_;
     std::vector<Triangle> triangles_;
+
 
     bool flat_;
 };

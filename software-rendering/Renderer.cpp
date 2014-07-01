@@ -1,6 +1,8 @@
 #include "Renderer.h"
 #include <assert.h>
 #include "util.h"
+#include "Camera.h"
+#include "Light.h"
 
 Renderer::Renderer(void)
     :d3d9_(nullptr)
@@ -15,6 +17,7 @@ Renderer::Renderer(void)
     ,light_(nullptr)
     ,flat_(false)
     ,light_type_(kNoLight)
+    ,camera_(nullptr)
 {
 }
 
@@ -97,6 +100,11 @@ void Renderer::Uninitialize(void)
     SafeRelease(&d3d_backbuffer_);
     SafeRelease(&d3d_device_);
     SafeRelease(&d3d9_);
+}
+
+void Renderer::SetCamera(Camera *camera)
+{
+    camera_ = camera;
 }
 
 // DDA 画线, 包括两端点 
@@ -258,21 +266,6 @@ void Renderer::EndFrame(void)
     d3d_device_->Present(0, 0, 0, 0);
 }
 
-void Renderer::SetMatrix(MatrixType t, const Matrix44 m)
-{
-    switch (t)
-    {
-    case kModelView:
-        model_view_ = m;
-        break;
-    case kPerspective:
-        perspective_ = m;
-        break;
-    default:
-        break;
-    }
-}
-
 void Renderer::DrawPrimitive(Primitive *primitive)
 {
     rend_primitive_ = RendPrimitive(primitive->size, primitive->material);
@@ -289,19 +282,23 @@ void Renderer::DrawPrimitive(Primitive *primitive)
     ModelViewTransform();
     // Lighting();
     Projection();
-    Clipping(-0.5f, 1.0f);
+    float z_far = camera_->get_far();
+    float z_near = camera_->get_near();
+    Clipping(z_near, z_far);
     Rasterization();
 }
 
 // rend_primitive 相机空间
 void Renderer::ModelViewTransform(void)
 {
+
+    Matrix44 model_view = camera_->GetModelViewMatrix();
     for (int i = 0; i < rend_primitive_.size; ++i)
     {
         Vector4 &position = rend_primitive_.vertexs[i].position;
-        position = position * model_view_;
+        position = position * model_view;
         Vector4 &normal = rend_primitive_.vertexs[i].position;
-        normal = normal * model_view_;
+        normal = normal * model_view;
     }
 }
 
@@ -348,10 +345,11 @@ void Renderer::ModelViewTransform(void)
 // 做完透视裁减，将图像变换至cvv
 void Renderer::Projection(void)
 {
+    Matrix44 perspective = camera_->GetPerpectivMatrix();
     for (int i = 0; i < rend_primitive_.size; ++i)
     {
         Vector4 &position = rend_primitive_.vertexs[i].position;
-        position = position * perspective_;
+        position = position * perspective;
         // FIXME 应该在进行裁剪以后做透视除法
     }
 }
@@ -579,7 +577,7 @@ static void clip_near_plane(const RendVertex &a, const RendVertex &b, RendVertex
 static bool is_backface(const Vector3 &a, const Vector3 &b, const Vector3 &c)
 {
     Vector3 n = CrossProduct(b - a, c - a);
-    return (n.z < 0);
+    return (n.z > 0);
 }
 
 void Renderer::Clipping(float z_far, float z_near)

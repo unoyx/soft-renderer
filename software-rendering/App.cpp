@@ -192,8 +192,8 @@ void App::Update(void)
     primitive.position[16] = Vector3(0, 0, 1);
     primitive.position[17] = Vector3(-1, 0, 0);
 
-    renderer_.SetMatrix(kModelView, camera_.GetModelViewMatrix());
-    renderer_.SetMatrix(kPerspective, camera_.GetPerpectivMatrix());
+    renderer_.SetCamera(&camera_);
+
 
     renderer_.DrawPrimitive(&primitive);
 

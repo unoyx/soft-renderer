@@ -39,9 +39,19 @@ public:
         far_ = f;
     }
 
+    float get_far(void)
+    {
+        return far_;
+    }
+
     void set_near(float n)
     {
         near_ = n;
+    }
+
+    float get_near(void)
+    {
+        return near_;
     }
 
     void set_fov(float fov)
