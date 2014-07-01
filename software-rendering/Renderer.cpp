@@ -1,6 +1,6 @@
 #include "Renderer.h"
 #include <assert.h>
-#include "Primitive.h"
+#include "util.h"
 
 Renderer::Renderer(void)
     :d3d9_(nullptr)
@@ -130,10 +130,7 @@ void Renderer::DrawLine(Point p0, Point p1, uint32 c)
 
     int x_step = (dx > 0) ? 1 : -1;
     int y_step = (dy > 0) ? 1 : -1;
-    Logger::GtLogInfo("start x,y : %d,%d", p0.x, p0.y);
-    Logger::GtLogInfo("end x,y : %d,%d", p1.x, p1.y);
     DrawPixel(x, y, c);
-    Logger::GtLogInfo("x,y : %d,%d", x, y);
     for (int k = 0; k < steps; ++k)
     {
         x_m += x_inc;
@@ -148,7 +145,6 @@ void Renderer::DrawLine(Point p0, Point p1, uint32 c)
             y_m -= steps;
             y += y_step;
         }
-        Logger::GtLogInfo("x,y : %d,%d", x, y);
         DrawPixel(x, y, c);
     }
 }
@@ -279,22 +275,22 @@ void Renderer::SetMatrix(MatrixType t, const Matrix44 m)
 
 void Renderer::DrawPrimitive(Primitive *primitive)
 {
-    //rend_primitive_ = RendPrimitive(primitive->size, primitive->material);
+    rend_primitive_ = RendPrimitive(primitive->size, primitive->material);
 
-    //for (int i = 0; i < rend_primitive_.size; ++i)
-    //{
-    //    rend_primitive_.position[i].SetVector3(primitive->position[i]);
-    //    rend_primitive_.position[i].w = 1.0f;
-    //    rend_primitive_.normals[i].SetVector3(primitive->normals[i]);
-    //    rend_primitive_.normals[i].w = 0.0f;
-    //    rend_primitive_.colors[i] = primitive->colors[i];
-    //}
+    for (int i = 0; i < rend_primitive_.size; ++i)
+    {
+        rend_primitive_.vertexs[i].position.SetVector3(primitive->position[i]);
+        rend_primitive_.vertexs[i].position.w = 1.0f;
+        rend_primitive_.vertexs[i].normal.SetVector3(primitive->normals[i]);
+        rend_primitive_.vertexs[i].normal.w = 0.0f;
+        rend_primitive_.vertexs[i].color = primitive->colors[i];
+    }
 
-    //ModelViewTransform();
-    //// Lighting();
-    //Projection();
-    //Clipping(Vector3(-1, -1, 0), Vector3(1, 1, 1.0f));
-    //Rasterization();
+    ModelViewTransform();
+    // Lighting();
+    Projection();
+    Clipping(-0.5f, 1.0f);
+    Rasterization();
 }
 
 // rend_primitive 相机空间
@@ -302,9 +298,9 @@ void Renderer::ModelViewTransform(void)
 {
     for (int i = 0; i < rend_primitive_.size; ++i)
     {
-        Vector4 &position = rend_primitive_.position[i];
+        Vector4 &position = rend_primitive_.vertexs[i].position;
         position = position * model_view_;
-        Vector4 &normal = rend_primitive_.normals[i];
+        Vector4 &normal = rend_primitive_.vertexs[i].position;
         normal = normal * model_view_;
     }
 }
@@ -354,14 +350,14 @@ void Renderer::Projection(void)
 {
     for (int i = 0; i < rend_primitive_.size; ++i)
     {
-        Vector4 &position = rend_primitive_.position[i];
+        Vector4 &position = rend_primitive_.vertexs[i].position;
         position = position * perspective_;
         // FIXME 应该在进行裁剪以后做透视除法
-        float div = 1 / abs(position.w);
-        position *= div;
     }
 }
 
+// 三维空间的裁剪算法，精度不足
+/*
 bool Renderer::ClipLine3d(const Vector4 &beg, const Vector4 &end,
                           const Vector3 &w_min, const Vector3 &w_max, Vector4 *res)
 {
@@ -474,6 +470,7 @@ void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
         }
 
         Vector4 *vtx = rend_primitive_.position + i;
+        Vector4 *col = rend_primitive_.colors + i;
         
         Vector3 a = vtx[0].GetVector3();
         Vector3 b = vtx[1].GetVector3();
@@ -514,7 +511,7 @@ void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
             assert(ret);
             ret = ClipLine3d(vtx[v0], vtx[v2], w_min, w_max, &vtx[v2]);
             assert(ret);
-            Triangle tri(vtx[v0], vtx[v1], vtx[v2]);
+            Triangle tri(vtx[v0], col[v0], vtx[v1], col[v1], vtx[v2], col[v2]);
             triangles_.push_back(tri);
         }
         else if (vertex_in_cvv == 2)
@@ -540,12 +537,168 @@ void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
             assert(ret);
             ret = ClipLine3d(vtx[v0], vtx[v2], w_min, w_max, &n);
             assert(ret);
+            Triangle tri0(m, col[v0], vtx[v1], col[v1], vtx[v2], Vector4(0, 0, 0, 0));
+            triangles_.push_back(tri0);
+            Triangle tri1(n, col[v0], m, Vector4(0, 0, 0, 0), vtx[v2], col[v2]);
+            triangles_.push_back(tri1);
+        }
+        else if (vertex_in_cvv == 3)
+        {
+            Triangle tri(vtx[v0], col[v0], vtx[v1], col[v1], vtx[v2], col[v2]);
+            triangles_.push_back(tri);
+        }
+        else
+        {
+            assert(0);
+        }
+    }
+}
+*/
+
+
+static void clip_near_plane(const RendVertex &a, const RendVertex &b, RendVertex *o)
+{
+    assert(a.position.z < 0);
+    assert(b.position.z > 0);
+
+    float k = b.position.z / (b.position.x - a.position.z);
+    Vector4 pos = k * (b.position - a.position) + a.position;
+    // 抛弃误差部分
+    if (pos.z < 0)
+    {
+        pos.z = 0;
+    }
+    Vector4 nor = k * (b.normal - a.normal) + a.normal;
+    Vector4 col = k * (b.color - a.color) + a.color;
+
+    o->position = pos;
+    o->normal = nor;
+    o->color = col;
+}
+
+static bool is_backface(const Vector3 &a, const Vector3 &b, const Vector3 &c)
+{
+    Vector3 n = CrossProduct(b - a, c - a);
+    return (n.z < 0);
+}
+
+void Renderer::Clipping(float z_far, float z_near)
+{
+    static const int TRIANGLE_SIZE = 3;
+    static const uint32 MODE_LEFT = 0x00000F;
+    static const uint32 MODE_RIGHT = 0x0000F0;
+    static const uint32 MODE_TOP = 0x000F00;
+    static const uint32 MODE_BUTTON = 0x00F000;
+    static const uint32 MODE_FAR = 0x0F0000;
+
+    for (int i = 0; i < rend_primitive_.size; i += 3)
+    {
+        int vertex_before_xy = 0;
+        uint32 vertex_culling_flag[TRIANGLE_SIZE] = {0};
+        bool vertex_before_flag[TRIANGLE_SIZE] = {false, false, false};
+
+        // 使用左，右，上，下，前相机平面进行剔除， 后相机平面进行裁剪
+        for (int j = 0; j < TRIANGLE_SIZE; ++j)
+        {
+            Vector4 &p0 = rend_primitive_.vertexs[i + j].position;
+            if (p0.x < z_near)
+                vertex_culling_flag[j] |= MODE_LEFT;
+            if (p0.x > z_near)
+                vertex_culling_flag[j] |= MODE_RIGHT;
+            if (p0.y < z_near)
+                vertex_culling_flag[j] |= MODE_BUTTON;
+            if (p0.y > z_near)
+                vertex_culling_flag[j] |= MODE_TOP;
+            if (p0.z > z_far)
+                vertex_culling_flag[j] |= MODE_FAR;
+
+            if (p0.z > 0)
+            {
+                vertex_before_flag[j] = true;
+                ++vertex_before_xy;
+            }
+        }
+
+        uint32 culling = 0;
+        for (int j = 0; j < TRIANGLE_SIZE; ++j)
+        {
+            culling &= vertex_culling_flag[j];
+        }
+        // 剔除
+        if (culling)
+        {
+            continue;
+        }
+
+        RendVertex *vtx = rend_primitive_.vertexs + i;
+
+        bool bf = is_backface(vtx[0].position.GetVector3(),
+                              vtx[1].position.GetVector3(),
+                              vtx[2].position.GetVector3());
+        // FIXME 背面剔除，需确定判断是否正确
+        if (backface_culling_ && bf)
+        {
+            continue;
+        }
+
+        int v0 = 0;
+        int v1 = 1;
+        int v2 = 2;
+        if (vertex_before_xy == 0)
+        {
+            continue;
+        }
+        else if (vertex_before_xy == 1)
+        {
+            if (vertex_before_flag[0])
+            {
+
+            }
+            else if (vertex_before_flag[1])
+            {
+                v0 = 1; v1 = 2; v2 = 0;
+            }
+            else if (vertex_before_flag[2])
+            {
+                v0 = 2; v1 = 0; v2 = 1;
+            }
+            // make v0 is in. v1, v2 is out.
+            // and keep the sequence of triangle.
+
+            clip_near_plane(vtx[v1], vtx[v0], &vtx[v1]);
+            clip_near_plane(vtx[v2], vtx[v0], &vtx[v2]);
+
+            Triangle tri(vtx[v0], vtx[v1], vtx[v2]);
+            triangles_.push_back(tri);
+        }
+        else if (vertex_before_xy == 2)
+        {
+            if (!vertex_before_flag[0])
+            {
+                //                v0 = 0; v1 = 1; v2 = 2;
+            }
+            else if (!vertex_before_flag[1])
+            {
+                v0 = 1; v1 = 2; v2 = 0;
+            }
+            else if (!vertex_before_flag[2])
+            {
+                v0 = 2; v1 = 0; v2 = 1;
+            }
+            // make v0 is out. v1, v2 is in. 
+            // and keep the sequence of triangle.
+            RendVertex m;
+            RendVertex n;
+
+            clip_near_plane(vtx[v0], vtx[v1], &m);
+            clip_near_plane(vtx[v0], vtx[v1], &n);
+
             Triangle tri0(m, vtx[v1], vtx[v2]);
             triangles_.push_back(tri0);
             Triangle tri1(n, m, vtx[v2]);
             triangles_.push_back(tri1);
         }
-        else if (vertex_in_cvv == 3)
+        else if (vertex_before_xy == 3)
         {
             Triangle tri(vtx[v0], vtx[v1], vtx[v2]);
             triangles_.push_back(tri);
@@ -555,6 +708,7 @@ void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
             assert(0);
         }
     }
+
 }
 
 // 直接光栅化，对象已在视口内
@@ -565,44 +719,51 @@ void Renderer::Rasterization()
     
     for (int i = 0; i < triangles_.size(); ++i)
     {
-        const uint32 c[3] = {0x00ff0000, 0x0000ff00, 0x000000ff};
-        static int k = 0;
-
         // 将[x,y]变换至[width,height]的范围
         for (int j = 0; j < 3; ++j)
         {
-            triangles_[i].p[j].x *= width_div2;
-            triangles_[i].p[j].x += width_div2;
-            triangles_[i].p[j].y *= -height_div2;
-            triangles_[i].p[j].y += height_div2;
+            assert(triangles_[i].v[j].position.z >= 0);
+            // 透视除法
+            float div = 1 / triangles_[i].v[j].position.w;
+            triangles_[i].v[j].position *= div;
+            triangles_[i].v[j].position.Display();
+
+            triangles_[i].v[j].position.x *= width_div2;
+            triangles_[i].v[j].position.x += width_div2;
+            triangles_[i].v[j].position.y *= -height_div2;
+            triangles_[i].v[j].position.y += height_div2;
         }
 
         if (flat_)
         {
-            FlatTriangle(&triangles_[i], c[k++]);
-            k %= 3;
+//            uint32 c = vector4_to_ARGB32(triangles_[i].c[0]);
+
+//            FlatTriangle(&triangles_[i], c);
         }
         else
         {
-            Vector3 p0 = triangles_[i].p[0].GetVector3();
-            Vector3 p1 = triangles_[i].p[1].GetVector3();
-            Vector3 p2 = triangles_[i].p[2].GetVector3();
+            Vector3 p0 = triangles_[i].v[0].position.GetVector3();
+            uint32 c0 = vector4_to_ARGB32(triangles_[i].v[0].color);
+            Vector3 p1 = triangles_[i].v[1].position.GetVector3();
+            uint32 c1 = vector4_to_ARGB32(triangles_[i].v[1].color);
+            Vector3 p2 = triangles_[i].v[2].position.GetVector3();
+            uint32 c2 = vector4_to_ARGB32(triangles_[i].v[2].color);
             
-            uint32 red = ARGB32(255, 200, 0, 0);
-            uint32 green = ARGB32(255, 0, 200, 0);
-            uint32 blue = ARGB32(255, 0, 0, 200);
-            draw_line(Point(p0.x, p0.y), Point(p1.x, p1.y), red);
-            draw_line(Point(p1.x, p1.y), Point(p2.x, p2.y), green);
-            draw_line(Point(p2.x, p2.y), Point(p0.x, p0.y), blue);
+            DrawLine(Point(p0.x, p0.y), Point(p1.x, p1.y), c0);
+            DrawLine(Point(p1.x, p1.y), Point(p2.x, p2.y), c1);
+            DrawLine(Point(p2.x, p2.y), Point(p0.x, p0.y), c2);
         }
     }
 }
-
+/*
 void Renderer::FlatTriangle(const Triangle *tri, uint32 color)
 {
-    Vector3 v0 = tri->p[0].GetVector3();
-    Vector3 v1 = tri->p[1].GetVector3();
-    Vector3 v2 = tri->p[2].GetVector3();
+    RendVertex v0 = tri->v[0];
+    Vector3 p0 = v0.position.GetVector3();
+    RendVertex v1 = tri->v[1];
+    Vector3 p1 = v1.position.GetVector3();
+    RendVertex v2 = tri->v[2];
+    Vector3 p2 = v2.position.GetVector3();
 
     if (equalf(v0.x, v1.x) && equalf(v1.x, v2.x))
         return;
@@ -722,3 +883,4 @@ void Renderer::SetLightingMode(LightingType t)
 {
     light_type_ = t;
 }
+*/

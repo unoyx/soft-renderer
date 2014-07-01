@@ -59,9 +59,12 @@ HWND App::Initialize(HINSTANCE inst, int width, int height)
 
     ShowWindow(wnd_, SW_SHOWNORMAL);
     UpdateWindow(wnd_);
+    
+    RECT client = {0};
+    GetClientRect(wnd_, &client);
 
     input_mgr_.Initialize(inst, wnd_);
-    renderer_.Initialize(wnd_, width, height);
+    renderer_.Initialize(wnd_, client.right - client.left, client.bottom - client.top);
 
     camera_.set_pos(Vector3(0, 0, -3));
     camera_.set_far(1.0);
@@ -160,39 +163,11 @@ void App::Update(void)
 
     renderer_.BeginFrame();
 
-    //Primitive primitive(1);
-    //primitive.vertexes[0] = Vector3(0, 0, -4);
-
-    Point p0(200, 200);
-    Point p1;
-//    p1.x = input_mgr_.GetMouseX() + width_ / 2;
-//    p1.y = input_mgr_.GetMouseY() + height_ / 2;
-    p1.x = 200;
-    p1.y = 250;
-//    renderer_.DrawLine(p0, p1, ARGB32(255, 250, 50, 50));
-
-    for (int y = 0; y < 480; ++y)
-    {
-//        renderer_.DrawPixel(199, y, ARGB32(255, 250, 50, 50));
-        renderer_.DrawPixel(200, y, ARGB32(255, 50, 50, 250));
-//        renderer_.DrawPixel(201, y, ARGB32(255, 50, 255, 50));
-//        renderer_.DrawPixel(202, y, ARGB32(255, 250, 50, 50));
-
-        renderer_.DrawPixel(400, y, ARGB32(255, 50, 250, 50));
-
-        renderer_.DrawPixel(600, y, ARGB32(255, 250, 250, 250));
-    }
-
-    for (int y = 0; y < 600; ++y)
-    {
-        for (int x = 0; x < 800; ++x)
-        {
-//            renderer_.DrawPixel(x, y, ARGB32(255, 255, 255, 255));
-        }
-    }
-   
-    
     Primitive primitive(18, nullptr);
+    for (int i = 0; i < 18; ++i)
+    {
+        primitive.colors[i] = Vector4(1.0f, 1.0, 1.0, 1.0);
+    }
     primitive.position[0] = Vector3(0, 0, -1);
     primitive.position[1] = Vector3(0, 1, 0);
     primitive.position[2] = Vector3(1, 0, 0);
@@ -201,26 +176,26 @@ void App::Update(void)
     primitive.position[4] = Vector3(0, 1, 0);
     primitive.position[5] = Vector3(0, 0, 1);
 
-    primitive.position[6]= Vector3(0, 0, 1);
-    primitive.position[7]= Vector3(0, 1, 0);
-    primitive.position[8]= Vector3(-1, 0, 0);
+    primitive.position[6] = Vector3(0, 0, 1);
+    primitive.position[7] = Vector3(0, 1, 0);
+    primitive.position[8] = Vector3(-1, 0, 0);
 
-    primitive.position[9]= Vector3(-1, 0, 0);
-    primitive.position[10]= Vector3(0, 1, 0);
-    primitive.position[11]= Vector3(0, 0, -1);
+    primitive.position[9] = Vector3(-1, 0, 0);
+    primitive.position[10] = Vector3(0, 1, 0);
+    primitive.position[11] = Vector3(0, 0, -1);
 
-    primitive.position[12]= Vector3(0, 0, -1);
-    primitive.position[13]= Vector3(1, 0, 0);
-    primitive.position[14]= Vector3(0, 0, 1);
+    primitive.position[12] = Vector3(0, 0, -1);
+    primitive.position[13] = Vector3(1, 0, 0);
+    primitive.position[14] = Vector3(0, 0, 1);
 
-    primitive.position[15]= Vector3(0, 0, -1);
-    primitive.position[16]= Vector3(0, 0, 1);
-    primitive.position[17]= Vector3(-1, 0, 0);
+    primitive.position[15] = Vector3(0, 0, -1);
+    primitive.position[16] = Vector3(0, 0, 1);
+    primitive.position[17] = Vector3(-1, 0, 0);
 
     renderer_.SetMatrix(kModelView, camera_.GetModelViewMatrix());
     renderer_.SetMatrix(kPerspective, camera_.GetPerpectivMatrix());
 
-//    renderer_.DrawPrimitive(&primitive);
+    renderer_.DrawPrimitive(&primitive);
 
     //for (int i = 0; i < width_; ++i)
     //{

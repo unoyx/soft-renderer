@@ -92,21 +92,26 @@ private:
     Primitive& operator=(const Primitive&);
 };
 
+
+class RendVertex
+{
+public:
+    Vector4 position;
+    Vector4 normal;
+    Vector4 color;
+};
+
 class RendPrimitive
 {
 public:
     RendPrimitive(void)
         :size(0)
-        ,position(nullptr)
-        ,normals(nullptr)
-        ,colors(nullptr)
+        ,vertexs(nullptr)
         ,material(nullptr) {}
 
     RendPrimitive(int size, Material *material)
         :size(size)
-        ,position(new Vector4[size])
-        ,normals(new Vector4[size])
-        ,colors(new Vector4[size])
+        ,vertexs(new RendVertex[size])
         ,material(material) {}
 
     ~RendPrimitive()
@@ -116,15 +121,11 @@ public:
 
     RendPrimitive(RendPrimitive&& r)
         :size(r.size)
-        ,position(r.position)
-        ,normals(r.normals)
-        ,colors(r.colors)
+        ,vertexs(r.vertexs)
         ,material(material) 
     {
         r.size = 0;
-        r.position = nullptr;
-        r.normals = nullptr;
-        r.colors = nullptr;
+        r.vertexs = nullptr;
         r.material = nullptr;
     }
 
@@ -132,45 +133,28 @@ public:
     {
         Clear();
         size = rhs.size;
-        position = rhs.position;
-        normals = rhs.normals;
-        colors = rhs.colors;
+        vertexs = rhs.vertexs;
         material = rhs.material;
 
         rhs.size = 0;
-        rhs.position = nullptr;
-        rhs.normals = nullptr;
-        rhs.colors = nullptr;
+        rhs.vertexs = nullptr;
         rhs.material = nullptr;
         return *this;
     }
 
     void Clear(void)
     {
-        if (position)
+        if (vertexs)
         {
-            delete[] position;
-            position = nullptr;
+            delete[] vertexs;
+            vertexs = nullptr;
         }
-        if (normals)
-        {
-            delete[] normals;
-            normals = nullptr;
-        }
-        if (colors)
-        {
-            delete[] colors;
-            colors = nullptr;
-        }
-
         material = nullptr;
         size = 0;
     }
 public:
-    Vector4 *position;
-    Vector4 *normals;
-    Vector4 *colors;
     int size;
+    RendVertex *vertexs;
     Material *material;
 private:
     RendPrimitive(const RendPrimitive&);
@@ -182,17 +166,18 @@ class Triangle
 {
 public:
     Triangle(void) {}
-    Triangle(const Vector4 &p0, const Vector4 &p1, const Vector4 &p2)
+    Triangle(const RendVertex &v0,
+             const RendVertex &v1,
+             const RendVertex &v2)
     {
-        p[0] = p0;
-        p[1] = p1;
-        p[2] = p2;
+        v[0] = v0;
+        v[1] = v1;
+        v[2] = v2;
     }
     ~Triangle(void) {}
 
-    Vector4 p[3];
-    Vector3 n[3];
-    Vector4 c[3];
+    RendVertex v[3];
+
 //    Vector2 uv[3][2];
 };
 

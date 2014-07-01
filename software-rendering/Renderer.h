@@ -6,10 +6,8 @@
 #include <d3d9.h>
 #include "mathdef.h"
 #include "matrix.h"
-#include "util.h"
-#include "Logger.h"
-#include "Light.h"
 #include "Primitive.h"
+#include "Light.h"
 
 using std::string;
 using std::vector;
@@ -34,7 +32,6 @@ public:
     ~Renderer(void);
     void Initialize(HWND hwnd, int width, int height);
     void Uninitialize(void);
-
 
     // DDA 画线, 包括两端点 
     void DrawLine(Point p0, Point p1, uint32 c);
@@ -101,7 +98,7 @@ public:
     void Projection(void);
 
     // TODO 裁剪 *
-    void Clipping(const Vector3 &w_min, const Vector3 &w_max);
+    void Clipping(float z_far, float z_near);
 
     // TODO 视口变换 *
     void ViewportTransform(void);
@@ -118,8 +115,9 @@ public:
     {
         flat_ = flag;
     }
-private:
     void draw_line(Point p0, Point p1, uint32 c);
+
+private:
     void BresenhamLine(Point p0, Point p1, uint32 c);
 
     bool ClipLine3d(const Vector4 &beg, const Vector4 &end, 

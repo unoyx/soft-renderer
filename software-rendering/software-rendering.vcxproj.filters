@@ -52,7 +52,7 @@
       <Filter>源文�?</Filter>
     </ClCompile>
     <ClCompile Include="InputManager.cpp">
-      <Filter>源文�?</Filter>
+      <Filter>Input</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -92,11 +92,11 @@
     <ClInclude Include="Fragment.h">
       <Filter>头文�?</Filter>
     </ClInclude>
-    <ClInclude Include="InputManager.h">
-      <Filter>头文�?</Filter>
-    </ClInclude>
     <ClInclude Include="typedef.h">
       <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="InputManager.h">
+      <Filter>Input</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
