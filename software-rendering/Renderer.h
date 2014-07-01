@@ -42,7 +42,7 @@ public:
     void DrawPixel(int x, int y, uint32 c)
     {
         int idx = y * (pitch_ / 4) + x;
-        Logger::GtLogInfo("idx %d", idx);
+//        Logger::GtLogInfo("idx %d", idx);
         buffer_[idx] = c;
     }
 

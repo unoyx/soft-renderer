@@ -37,13 +37,13 @@ void Renderer::Initialize(HWND hwnd, int width, int height)
 
     params.BackBufferWidth = width;
     params.BackBufferHeight = height;
-    params.BackBufferFormat = D3DFMT_X8R8G8B8;
-    params.BackBufferCount = 0;
+    params.BackBufferFormat = D3DFMT_A8R8G8B8;
+    params.BackBufferCount = 1;
     params.MultiSampleType = D3DMULTISAMPLE_NONE;
     params.MultiSampleQuality = 0;
     params.SwapEffect = D3DSWAPEFFECT_DISCARD;
     params.hDeviceWindow = hwnd;
-    params.Windowed = TRUE;
+    params.Windowed = true;
     params.EnableAutoDepthStencil = false;
     params.AutoDepthStencilFormat = D3DFMT_D16;
     params.Flags = D3DPRESENTFLAG_LOCKABLE_BACKBUFFER;
@@ -51,11 +51,11 @@ void Renderer::Initialize(HWND hwnd, int width, int height)
     params.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
 
     HRESULT hr = d3d9_->CreateDevice(D3DADAPTER_DEFAULT,
-        D3DDEVTYPE_HAL,
-        hwnd,
-        D3DCREATE_SOFTWARE_VERTEXPROCESSING,
-        &params,
-        &d3d_device_);
+                                     D3DDEVTYPE_HAL,
+                                     hwnd,
+                                     D3DCREATE_SOFTWARE_VERTEXPROCESSING,
+                                     &params,
+                                     &d3d_device_);
     if (FAILED(hr))
     {
         Logger::GtLogError("d3d9 CreateDevice failed: %d\n", GetLastError());

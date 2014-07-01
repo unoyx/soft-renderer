@@ -168,8 +168,29 @@ void App::Update(void)
 //    p1.x = input_mgr_.GetMouseX() + width_ / 2;
 //    p1.y = input_mgr_.GetMouseY() + height_ / 2;
     p1.x = 200;
-    p1.y = 347;
-    renderer_.DrawLine(p0, p1, ARGB32(255, 250, 50, 50));
+    p1.y = 250;
+//    renderer_.DrawLine(p0, p1, ARGB32(255, 250, 50, 50));
+
+    for (int y = 0; y < 480; ++y)
+    {
+//        renderer_.DrawPixel(199, y, ARGB32(255, 250, 50, 50));
+        renderer_.DrawPixel(200, y, ARGB32(255, 50, 50, 250));
+//        renderer_.DrawPixel(201, y, ARGB32(255, 50, 255, 50));
+//        renderer_.DrawPixel(202, y, ARGB32(255, 250, 50, 50));
+
+        renderer_.DrawPixel(400, y, ARGB32(255, 50, 250, 50));
+
+        renderer_.DrawPixel(600, y, ARGB32(255, 250, 250, 250));
+    }
+
+    for (int y = 0; y < 600; ++y)
+    {
+        for (int x = 0; x < 800; ++x)
+        {
+//            renderer_.DrawPixel(x, y, ARGB32(255, 255, 255, 255));
+        }
+    }
+   
     
     Primitive primitive(18, nullptr);
     primitive.position[0] = Vector3(0, 0, -1);
@@ -199,7 +220,7 @@ void App::Update(void)
     renderer_.SetMatrix(kModelView, camera_.GetModelViewMatrix());
     renderer_.SetMatrix(kPerspective, camera_.GetPerpectivMatrix());
 
-    renderer_.DrawPrimitive(&primitive);
+//    renderer_.DrawPrimitive(&primitive);
 
     //for (int i = 0; i < width_; ++i)
     //{
