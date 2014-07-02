@@ -45,9 +45,11 @@ public:
         buffer_[idx] = c;
     }
 
-    // Fixme GetDC的使用有限制条件，当前调用失败。参见 http://msdn.microsoft.com/en-us/library/windows/desktop/bb205894(v=vs.85).aspx
-    void DrawText(Point pos, string text, uint32 c)
+    void Flush(void)
     {
+        if (text_string_.empty())
+            return;
+
         HDC hdc;
         HRESULT res = d3d_backbuffer_->GetDC(&hdc);
         if (FAILED(res))
@@ -55,19 +57,34 @@ public:
             Logger::GtLogError("d3d9 GetDC failed: %d", GetLastError());
             return;
         }
-
-        RECT rect;
-        rect.left = pos.x;
-        rect.right = text.size() * 10 + pos.x;
-        rect.top = pos.y;
-        rect.bottom = pos.y + 20;
-
         SelectObject(hdc, font_);
         SetBkMode(hdc, TRANSPARENT);
-        SetTextColor(hdc, c);
-        ::DrawText(hdc, text.c_str(), text.length(), &rect, DT_LEFT);
-        
+        ::SetTextColor(hdc, color_);
+        for (int i = 0; i < text_string_.size(); ++i)
+        {
+            RECT rect;
+            rect.left = text_pos_[i].x;
+            rect.right = text_string_[i].size() * 10 + rect.left;
+            rect.top = text_pos_[i].y;
+            rect.bottom = rect.top + 20;
+            ::DrawText(hdc, text_string_[i].c_str(), text_string_[i].length(), &rect, DT_LEFT);
+        }
+        text_pos_.clear();
+        text_string_.clear();
         d3d_backbuffer_->ReleaseDC(hdc);
+    }
+    
+    void SetTextColor(uint32 color)
+    {
+        color_ = color;
+    }
+
+    // Fixme GetDC的使用有限制条件，当前调用失败。参见 http://msdn.microsoft.com/en-us/library/windows/desktop/bb205894(v=vs.85).aspx
+    void DrawText(Point pos, string text)
+    {
+        text_pos_.push_back(pos);
+        text_string_.push_back(text);
+
     }
 
     void BeginFrame(void);
@@ -85,7 +102,7 @@ public:
     void SetLightingMode(LightingType t);
 
     // TODO 变换物体坐标至视图空间 *
-    void ModelViewTransform(void);
+    void ModelViewTransform(const Matrix44 &model_view);
 
     // TODO 背面剔除
     void BackfaceCulling(void);
@@ -99,7 +116,7 @@ public:
     void Lighting(void);
 
     // TODO 透视投影 *
-    void Projection(void);
+    void Projection(const Matrix44 &perspective);
 
     // TODO 裁剪 *
     void Clipping(float z_far, float z_near);
@@ -155,6 +172,9 @@ private:
     RendPrimitive rend_primitive_;
     std::vector<Triangle> triangles_;
 
+    vector<Point> text_pos_;
+    vector<string> text_string_;
+    uint32 color_;
 
     bool flat_;
 };

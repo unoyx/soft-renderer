@@ -88,6 +88,7 @@
     <ClCompile Include="Primitive.cpp" />
     <ClCompile Include="quaternion.cpp" />
     <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />

@@ -54,15 +54,15 @@
     <ClCompile Include="InputManager.cpp">
       <Filter>Input</Filter>
     </ClCompile>
+    <ClCompile Include="util.cpp">
+      <Filter>math</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h">
       <Filter>头文�?</Filter>
     </ClInclude>
     <ClInclude Include="Renderer.h">
-      <Filter>头文�?</Filter>
-    </ClInclude>
-    <ClInclude Include="util.h">
       <Filter>头文�?</Filter>
     </ClInclude>
     <ClInclude Include="Logger.h">
@@ -97,6 +97,9 @@
     </ClInclude>
     <ClInclude Include="InputManager.h">
       <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="util.h">
+      <Filter>math</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
