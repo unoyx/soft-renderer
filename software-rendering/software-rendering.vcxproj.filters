@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="App.cpp" />
+    <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Fragment.cpp" />
+    <ClCompile Include="InputManager.cpp" />
+    <ClCompile Include="Light.cpp" />
+    <ClCompile Include="Logger.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="matrix.cpp" />
+    <ClCompile Include="Primitive.cpp" />
+    <ClCompile Include="quaternion.cpp" />
+    <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="util.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="App.h" />
+    <ClInclude Include="Camera.h" />
+    <ClInclude Include="Fragment.h" />
+    <ClInclude Include="InputManager.h" />
+    <ClInclude Include="Light.h" />
+    <ClInclude Include="Logger.h" />
+    <ClInclude Include="mathdef.h" />
+    <ClInclude Include="matrix.h" />
+    <ClInclude Include="Primitive.h" />
+    <ClInclude Include="quaternion.h" />
+    <ClInclude Include="Renderer.h" />
+    <ClInclude Include="typedef.h" />
+    <ClInclude Include="util.h" />
+    <ClInclude Include="vector.h" />
+  </ItemGroup>
+</Project>

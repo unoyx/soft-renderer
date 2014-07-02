@@ -18,3 +18,14 @@ inline void SafeRelease(Interface **ppInterfaceToRelease)
 #define Assert(b)
 #endif //DEBUG || _DEBUG
 #endif
+
+enum PrimitiveType
+{
+    kTriangleOut = 0,
+    kTriangleIn = 1,
+    kPyramid = 2,
+    kPrimitiveSize = 3
+};
+
+class Primitive;
+void get_primitive(PrimitiveType t, Primitive *pri);

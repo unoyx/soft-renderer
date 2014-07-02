@@ -66,10 +66,10 @@ HWND App::Initialize(HINSTANCE inst, int width, int height)
     input_mgr_.Initialize(inst, wnd_);
     renderer_.Initialize(wnd_, client.right - client.left, client.bottom - client.top);
 
-    camera_.set_pos(Vector3(0, 0, -3));
+    camera_.set_pos(Vector3(0, 0, -1));
     camera_.set_far(1.0);
-    camera_.set_near(-0.5);
-    camera_.set_fov(90);
+    camera_.set_near(-1);
+    camera_.set_fov(60);
     float aspect = static_cast<float>(width) / static_cast<float> (height);
     camera_.set_aspect(aspect);
 
@@ -163,37 +163,18 @@ void App::Update(void)
 
     renderer_.BeginFrame();
 
-    Primitive primitive(18, nullptr);
-    for (int i = 0; i < 18; ++i)
+    static int p = 0;
+    Primitive primitive;
+
+    if (input_mgr_.KeyPressed(DIK_P))
     {
-        primitive.colors[i] = Vector4(1.0f, 1.0, 1.0, 1.0);
-    }
-    primitive.position[0] = Vector3(0, 0, -1);
-    primitive.position[1] = Vector3(0, 1, 0);
-    primitive.position[2] = Vector3(1, 0, 0);
+        p += 1;
+        p %= kPrimitiveSize;
 
-    primitive.position[3] = Vector3(1, 0, 0);
-    primitive.position[4] = Vector3(0, 1, 0);
-    primitive.position[5] = Vector3(0, 0, 1);
-
-    primitive.position[6] = Vector3(0, 0, 1);
-    primitive.position[7] = Vector3(0, 1, 0);
-    primitive.position[8] = Vector3(-1, 0, 0);
-
-    primitive.position[9] = Vector3(-1, 0, 0);
-    primitive.position[10] = Vector3(0, 1, 0);
-    primitive.position[11] = Vector3(0, 0, -1);
-
-    primitive.position[12] = Vector3(0, 0, -1);
-    primitive.position[13] = Vector3(1, 0, 0);
-    primitive.position[14] = Vector3(0, 0, 1);
-
-    primitive.position[15] = Vector3(0, 0, -1);
-    primitive.position[16] = Vector3(0, 0, 1);
-    primitive.position[17] = Vector3(-1, 0, 0);
+    } 
+    get_primitive((PrimitiveType)p, &primitive);
 
     renderer_.SetCamera(&camera_);
-
 
     renderer_.DrawPrimitive(&primitive);
 

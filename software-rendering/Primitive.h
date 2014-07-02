@@ -54,6 +54,8 @@ public:
         rhs.normals = nullptr;
         rhs.colors = nullptr;
         rhs.material = nullptr;
+
+        return *this;
     }
 
     void Clear(void)
@@ -86,10 +88,7 @@ public:
 
 //    Texture *texture;
 //    Light *light;
-
 private:
-    Primitive(const Primitive&);
-    Primitive& operator=(const Primitive&);
 };
 
 
@@ -99,6 +98,7 @@ public:
     Vector4 position;
     Vector4 normal;
     Vector4 color;
+//    Vector2 uv;
 };
 
 class RendPrimitive
