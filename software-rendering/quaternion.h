@@ -173,7 +173,7 @@ public:
     Quat Inverse(void) const
     {
         float mag = Magnitude();
-        if (equalf(mag, 1.0f))
+        if (equalf(mag, 1.0f, gkFloatPrecise))
         {
             return Conjugate();
         }

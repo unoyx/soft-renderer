@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fbx", "fbx\fbx.vcxproj", "{
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tester", "tester\tester.vcxproj", "{9E8CF878-9BAF-48C2-BA68-A08D8F5B16C3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "d3d_tester", "d3d_tester\d3d_tester.vcxproj", "{220CC064-1725-4F0E-9E97-3DE33EB6F581}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -31,6 +33,10 @@ Global
 		{9E8CF878-9BAF-48C2-BA68-A08D8F5B16C3}.Debug|Win32.Build.0 = Debug|Win32
 		{9E8CF878-9BAF-48C2-BA68-A08D8F5B16C3}.Release|Win32.ActiveCfg = Release|Win32
 		{9E8CF878-9BAF-48C2-BA68-A08D8F5B16C3}.Release|Win32.Build.0 = Release|Win32
+		{220CC064-1725-4F0E-9E97-3DE33EB6F581}.Debug|Win32.ActiveCfg = Debug|Win32
+		{220CC064-1725-4F0E-9E97-3DE33EB6F581}.Debug|Win32.Build.0 = Debug|Win32
+		{220CC064-1725-4F0E-9E97-3DE33EB6F581}.Release|Win32.ActiveCfg = Release|Win32
+		{220CC064-1725-4F0E-9E97-3DE33EB6F581}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

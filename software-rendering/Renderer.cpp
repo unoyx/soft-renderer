@@ -109,96 +109,149 @@ void Renderer::SetCamera(Camera *camera)
     camera_ = camera;
 }
 
-// DDA 画线, 包括两端点 
-void Renderer::DrawLine(Point p0, Point p1, uint32 c)
+// 返回false时该线段完全在裁减区域之外
+static bool clip_line_2d(int min_x, int max_x, int min_y, int max_y, RendVertex &v0, RendVertex &v1)
 {
-//    assert(0 <= p0.x && p0.x <= width_);
-//    assert(0 <= p1.y && p1.y <= height_);
-    // 线段在x,y方向的增量
-    int dx = p1.x - p0.x;
-    int dy = p1.y - p0.y;
+    Logger::GtLogInfo("clip before v0: %8.3f %f8.3\n", v0.position.x, v0.position.y);
+    Logger::GtLogInfo("clip before v1: %8.3f %f8.3\n", v1.position.x, v1.position.y);
+    static const int BUF_SIZE = 4;
+    float x0 = v0.position.x;
+    float y0 = v0.position.y;
+    float x_dt = v1.position.x - x0;
+    float y_dt = v1.position.y - y0;
+    
+    float p[BUF_SIZE] = {0.0};
+    float q[BUF_SIZE] = {0.0};
 
-    int steps = 0;
-    if (abs(dy) > abs(dx))
+    p[0] = -x_dt;
+    q[0] = x0 - min_x;
+
+    p[1] = x_dt;
+    q[1] = max_x - x0;
+
+    p[2] = -y_dt;
+    q[2] = y0 - min_y;
+
+    p[3] = y_dt;
+    q[3] = max_y - y0;
+
+    float u1 = 0.0f;
+    float u2 = 1.0f;
+
+    for (int i = 0; i < BUF_SIZE; ++i)
     {
-        steps = abs(dy);
+        if (equalf(p[i], 0))
+        {
+            if (q[i] < 0)
+                return false;
+            continue;
+        }
+        float r = q[i] / p[i];
+        // max of, from out to in.
+        if (p[i] < 0)
+        {
+            if (r > u2)
+                return false;
+            else if (r > u1)
+                u1 = r;
+        }
+        // min of, from in to out.
+        if (p[i] > 0)
+        {
+            if (r < u1)
+                return false;
+            else if (r < u2)
+                u2 = r;
+        }
     }
+
+    if (u1 > u2)
+    {
+        return false;
+    } 
     else
     {
-        steps = abs(dx);
-    }
+        RendVertex s = v0;
+        RendVertex e = v1;
 
-    // 整数计数器的增量
-    float x_inc = abs(dx);
-    float y_inc = abs(dy);
-    // 整数计数器
-    int x_m = 0;
-    int y_m = 0;
-
-    int x = p0.x;
-    int y = p0.y;
-
-    int x_step = (dx > 0) ? 1 : -1;
-    int y_step = (dy > 0) ? 1 : -1;
-
-    if (x >= 0 && x < width_ && y >= 0 && y < height_)
-        DrawPixel(x, y, c);
-    for (int k = 0; k < steps; ++k)
-    {
-        x_m += x_inc;
-        if (x_m >= steps)
+        if (!equalf(u1, 0))
         {
-            x_m -= steps;
-            x += x_step;
+            v0.position = s.position + u1 * (e.position - s.position);
+            v0.color = e.color + u1 * (e.color - s.color);
         }
-        y_m += y_inc;
-        if (y_m >= steps)
+        if (!equalf(u2, 1))
         {
-            y_m -= steps;
-            y += y_step;
+            v1.position = s.position + u2 * (e.position - s.position);
+            v1.color = e.color + u2 * (e.color - s.color);
         }
-        if (x >= 0 && x < width_ && y >= 0 && y < height_)
-            DrawPixel(x, y, c);
+        Logger::GtLogInfo("clip after v0: %8.3f %f8.3\n", v0.position.x, v0.position.y);
+        Logger::GtLogInfo("clip after v1: %8.3f %f8.3\n", v1.position.x, v1.position.y);
+        return true;
     }
 }
 
-void Renderer::BresenhamLine(Point p0, Point p1, uint32 c)
+void Renderer::DrawLine(RendVertex v0, RendVertex v1)
 {
-    bool steep = abs(p1.y - p0.y) > abs(p1.x - p0.x);
-    if (steep)
+    bool flag = clip_line_2d(0, width_, 0, height_, v0, v1);
+    if (!flag)
+        return;
+
+    float x_start = v0.position.x;
+    float x_end = v1.position.x;
+    float y_start = v0.position.y;
+    float y_end = v1.position.y;
+
+    Vector4 color_start = v0.color;
+    Vector4 color_end = v1.color;
+
+    // fixme  floor 对负数取值的影响
+    int dx = (int)x_end - (int)x_start;
+    int x_inc = (dx > 0) ? 1 : -1;
+    dx = abs(dx);
+    int dy = (int)y_end - (int)y_start;
+    int y_inc = (dy > 0) ? 1 : -1;
+    dy = abs(dy);
+
+    bool is_step_x = true;
+    int step = dx;
+    if (dx < dy)
     {
-        swap(p0.x, p0.y);
-        swap(p1.x, p1.y);
-    }
-    if (p0.x > p1.x)
-    {
-        swap(p0.x, p1.x);
-        swap(p0.y, p1.y);
-    }
-    int dx = p1.x - p0.x;
-    int dy = abs(p1.y - p0.y);
-    int err = dx / 2;
-    int y_inc = (p0.y < p1.y) ? 1 : -1;
-    int y = p0.y;
-    for (int x = p0.x; x < p1.x; ++x)
-    {
-        if (steep)
-        {
-            DrawPixel(y, x, c);
-        }
-        else
-        {
-            DrawPixel(x, y, c);
-        }
-        err -= dy;
-        if (err < 0)
-        {
-            y += y_inc;
-            err += dx;
-        }
+        is_step_x = false;
+        step = dy;
     }
 
+    Vector4 dc = (color_end - color_start) / (float)step;
+
+    int x_count = 0;
+    int y_count = 0;
+    
+    int x = (int)x_start;
+    int y = (int)y_start;
+    Vector4 color = color_start;
+
+    DrawPixel(x, y, vector4_to_ARGB32(color));
+    for (int k = 1; k < step; ++k)
+    {
+        x_count += dx;
+        if (x_count >= step)
+        {
+            x_count -= step;
+            x += x_inc;
+            if (is_step_x)
+                color += dc;
+        }
+        y_count += dy;
+        if (y_count >= step)
+        {
+            y_count -= step;
+            y += y_inc;
+            if (!is_step_x)
+                color += dc;
+        }
+        DrawPixel(x, y, vector4_to_ARGB32(color));
+    }
 }
+
 
 void Renderer::draw_line(Point p0, Point p1, uint32 c) {
 	// 参数 c 为颜色值
@@ -290,9 +343,9 @@ void Renderer::DrawPrimitive(Primitive *primitive)
     float z_far = camera_->get_far();
     float z_near = camera_->get_near();
     // Lighting();
+    Clipping(z_near, z_far);
     Matrix44 perspective = camera_->GetPerpectivMatrix();
     Projection(perspective);
-    Clipping(z_near, z_far);
     Rasterization();
 }
 
@@ -351,132 +404,24 @@ void Renderer::ModelViewTransform(const Matrix44 &model_view)
 // 做完透视裁减，将图像变换至cvv
 void Renderer::Projection(const Matrix44 &perspective)
 {
-    for (int i = 0; i < rend_primitive_.size; ++i)
+    //for (int i = 0; i < rend_primitive_.size; ++i)
+    //{
+    //    Vector4 &position = rend_primitive_.vertexs[i].position;
+    //    position = position * perspective;
+    //}
+    for (int i = 0; i < triangles_.size(); ++i)
     {
-        Vector4 &position = rend_primitive_.vertexs[i].position;
-        position = position * perspective;
-    }
-}
-
-// 背面剔除，裁剪，透视除法
-/*
-void Renderer::Clipping(const Vector3 &w_min, const Vector3 &w_max)
-{
-//    assert((rend_primitive_.size % 3) == 0);
-    // (rand_primitive_.size / 3) 向下截断
-
-    static const int TRIANGLE_SIZE = 3;
-    for (int i = 0; i < rend_primitive_.size; i += 3)
-    {
-        int vertex_in_cvv = 0;
-        bool vertex_in_ccodes[TRIANGLE_SIZE] = {true, true, true};
-
-        for (int j = 0; j < TRIANGLE_SIZE; ++j)
+        for (int j = 0; j < 3; ++j)
         {
-            Vector4 &p0 = rend_primitive_.position[i + j];
-
-            if (p0.x < w_min.x || p0.x > w_max.x)
-                vertex_in_ccodes[j] = false;
-            if (p0.y < w_min.y || p0.y > w_max.y)
-                vertex_in_ccodes[j] = false;
-            if (p0.z < w_min.z || p0.z > w_max.z)
-                vertex_in_ccodes[j] = false;
-            if (vertex_in_ccodes[j])
-            {
-                ++vertex_in_cvv;
-            }
-        }
-
-        Vector4 *vtx = rend_primitive_.position + i;
-        Vector4 *col = rend_primitive_.colors + i;
-        
-        Vector3 a = vtx[0].GetVector3();
-        Vector3 b = vtx[1].GetVector3();
-        Vector3 c = vtx[2].GetVector3();                                                        
-
-        Vector3 n = CrossProduct(b - a, c - b);
-        // FIXME 背面剔除，需确定判断是否正确
-        if (backface_culling_ && n.z > 0)
-        {
-            continue;
-        }
-
-        int v0 = 0;
-        int v1 = 1;
-        int v2 = 2;
-        if (vertex_in_cvv == 0)
-        {
-            continue;
-        }
-        else if (vertex_in_cvv == 1)
-        {
-            if (vertex_in_ccodes[0])
-            {
-
-            }
-            else if (vertex_in_ccodes[1])
-            {
-                v0 = 1; v1 = 2; v2 = 0;
-            }
-            else if (vertex_in_ccodes[2])
-            {
-                v0 = 2; v1 = 0; v2 = 1;
-            }
-            // make v0 is in. v1, v2 is out.
-            // and keep the sequence of triangle.
-            bool ret = false;
-            ret = ClipLine3d(vtx[v0], vtx[v1], w_min, w_max, &vtx[v1]);
-            assert(ret);
-            ret = ClipLine3d(vtx[v0], vtx[v2], w_min, w_max, &vtx[v2]);
-            assert(ret);
-            Triangle tri(vtx[v0], col[v0], vtx[v1], col[v1], vtx[v2], col[v2]);
-            triangles_.push_back(tri);
-        }
-        else if (vertex_in_cvv == 2)
-        {
-            if (!vertex_in_ccodes[0])
-            {
-//                v0 = 0; v1 = 1; v2 = 2;
-            }
-            else if (!vertex_in_ccodes[1])
-            {
-                v0 = 1; v1 = 2; v2 = 0;
-            }
-            else if (!vertex_in_ccodes[2])
-            {
-                v0 = 2; v1 = 0; v2 = 1;
-            }
-            // make v0 is out. v1, v2 is in. 
-            // and keep the sequence of triangle.
-            Vector4 m;
-            Vector4 n;
-            bool ret = false;
-            ret = ClipLine3d(vtx[v0], vtx[v1], w_min, w_max, &m);
-            assert(ret);
-            ret = ClipLine3d(vtx[v0], vtx[v2], w_min, w_max, &n);
-            assert(ret);
-            Triangle tri0(m, col[v0], vtx[v1], col[v1], vtx[v2], Vector4(0, 0, 0, 0));
-            triangles_.push_back(tri0);
-            Triangle tri1(n, col[v0], m, Vector4(0, 0, 0, 0), vtx[v2], col[v2]);
-            triangles_.push_back(tri1);
-        }
-        else if (vertex_in_cvv == 3)
-        {
-            Triangle tri(vtx[v0], col[v0], vtx[v1], col[v1], vtx[v2], col[v2]);
-            triangles_.push_back(tri);
-        }
-        else
-        {
-            assert(0);
+            Vector4 &position = triangles_[i].v[j].position;
+            position = position * perspective;
         }
     }
 }
-*/
-
 
 static void clip_near_plane(const RendVertex &a, const RendVertex &b, RendVertex *o)
 {
-    assert(a.position.z < 0);
+    assert(a.position.z <= 0);
     assert(b.position.z > 0);
 
     float k = (b.position.z - FLT_EPSILON) / (b.position.z - a.position.z);
@@ -653,145 +598,6 @@ static void viewport_transform(int width, int height, Triangle *tri)
     }
 }
 
-
-// 三维空间的裁剪算法，精度不足
-/*
-bool Renderer::ClipLine3d(const Vector4 &beg, const Vector4 &end,
-                          const Vector3 &w_min, const Vector3 &w_max, Vector4 *res)
-{
-    assert(res);
-
-    static const int BUF_SIZE = 6;
-
-    float x0 = beg.x;
-    float y0 = beg.y;
-    float z0 = beg.z; 
-    float x_dt = end.x - beg.x;
-    float y_dt = end.y - beg.y;
-    float z_dt = end.z - beg.z;
-
-    float p[BUF_SIZE] = {0};
-    float q[BUF_SIZE] = {0};
-
-    p[0] = -x_dt;
-    q[0] = x0 - w_min.x;
-
-    p[1] = x_dt;
-    q[1] = w_max.x - x0;
-
-    p[2] = -y_dt;
-    q[2] = y0 - w_min.y;
-
-    p[3] = y_dt;
-    q[3] = w_max.y - y0;
-
-    p[4] = -z_dt;
-    q[4] = z0 - w_min.z; // 
-
-    p[5] = z_dt;
-    q[5] = w_max.z - z0;
-
-    float u1 = 0.0f;
-    float u2 = 1.0f;
-
-    for (int i = 0; i < BUF_SIZE; ++i)
-    {
-        if (equalf(p[i], 0))
-        {
-            if (q[i] < 0)
-                return false;
-            continue;
-        }
-        float r = q[i] / p[i];
-        // max of, from out to in.
-        if (u1 < r && p[i] < 0)
-        {
-            u1 = r;
-        }
-        // min of, from in to out.
-        if (u2 > r && p[i] > 0)
-        {
-            u2 = r;
-        }
-    }
-
-    if (u1 > u2)
-    {
-        assert(false);
-        return false;
-    } 
-    else
-    {
-        if (equalf(u1, 0))
-        {
-            *res = beg + (u2 * Vector4(x_dt, y_dt, z_dt, 0));
-        }
-        else if (equalf(u2, 1))
-        {
-            *res = beg + (u1 * Vector4(x_dt, y_dt, z_dt, 0));
-        }
-        // 有计算误差
-        res->x = clamp(res->x, w_min.x, w_max.x);
-        res->y = clamp(res->y, w_min.y, w_max.y);
-        return true;
-    }
-    assert(false);
-    return false;
-}
-*/
-#if 0
-static float clip_line(Point p0, Point p1, int width, int height, int x, int y)
-{
-
-}
-
-static void clip_viewport(int width, int height, Triangle *tri)
-{
-    static const int OVER_LEFT = 0x0000000F;
-    static const int OVER_RIGHT = 0x000000F0;
-    static const int OVER_TOP = 0x00000F00;
-    static const int OVER_DOWN = 0x0000F000;
-    static const int TRIANGLE_VERTEX = 3;
-
-    int vertex_out = 0;
-    int vertex_ccodes[TRIANGLE_VERTEX] = {0};
-
-    for (int i = 0; i < TRIANGLE_VERTEX; ++i)
-    {
-        Vector4 &p = tri->v[i].position;
-        if (p.x < 0)
-            vertex_ccodes[i] |= OVER_LEFT;
-        if (p.x >= width)
-            vertex_ccodes[i] |= OVER_RIGHT;
-        if (p.y < 0)
-            vertex_ccodes[i] |= OVER_TOP;
-        if (p.y >= height)
-            vertex_ccodes[i] |= OVER_DOWN;
-
-        if (vertex_ccodes[i])
-            ++vertex_out;
-    }
-
-    if (vertex_out == 0)
-    {
-        return;
-    }
-    else if (vertex_out == 1)
-    {
-
-    }
-    else if (vertex_out == 2)
-    {
-
-    }
-    else if (vertex_out == 3)
-    {
-
-    }
-}
-#endif
-
-// 直接光栅化，对象已在视口内
 void Renderer::Rasterization()
 {
     
@@ -805,16 +611,13 @@ void Renderer::Rasterization()
         }
         else
         {
-            Vector3 p0 = triangles_[i].v[0].position.GetVector3();
-            uint32 c0 = vector4_to_ARGB32(triangles_[i].v[0].color);
-            Vector3 p1 = triangles_[i].v[1].position.GetVector3();
-            uint32 c1 = vector4_to_ARGB32(triangles_[i].v[1].color);
-            Vector3 p2 = triangles_[i].v[2].position.GetVector3();
-            uint32 c2 = vector4_to_ARGB32(triangles_[i].v[2].color);
-            
-            DrawLine(Point(p0.x, p0.y), Point(p1.x, p1.y), c0);
-            DrawLine(Point(p1.x, p1.y), Point(p2.x, p2.y), c1);
-            DrawLine(Point(p2.x, p2.y), Point(p0.x, p0.y), c2);
+            RendVertex v0 = triangles_[i].v[0];
+            RendVertex v1 = triangles_[i].v[1];
+            RendVertex v2 = triangles_[i].v[2];
+
+            DrawLine(v0, v1);
+            DrawLine(v1, v2);
+            DrawLine(v2, v0);
         }
     }
 }
@@ -829,9 +632,9 @@ void Renderer::DiffTriangle(Triangle *tri)
     RendVertex &v2 = tri->v[2];
     Vector4 &p2 = v2.position;
 
-    if (equalf(p0.x, p1.x) && equalf(p1.x, p2.x))
+    if (((int)p0.x == (int)p1.x) && ((int)p1.x == (int)p2.x))
         return;
-    if (equalf(p0.y, p1.y) && equalf(p1.y, p2.y))
+    if (((int)p0.y == (int)p1.y) && ((int)p1.y == (int)p2.y))
         return;
 
     // TODO 应该可以利用管线中三角形的性质进行优化d
@@ -860,7 +663,7 @@ void Renderer::DiffTriangle(Triangle *tri)
                   \ /  
                   v2
     */
-    if (equalf(p0.y, p1.y))
+    if ((int)p0.y == (int)p1.y)
     {
         if (p0.x > p1.x)
             swap(v0, v1);
@@ -875,7 +678,7 @@ void Renderer::DiffTriangle(Triangle *tri)
                 /        \
             v2 ------------ v1
     */
-    else if (equalf(p1.y, p2.y))
+    else if ((int)p1.y == (int)p2.y)
     {
         if (p2.x > p1.x)
             swap(v1, v2);
@@ -885,7 +688,7 @@ void Renderer::DiffTriangle(Triangle *tri)
     {
         // 差值计算中点
         RendVertex m;
-        float k =  (p1.y - p0.y) / (p2.y - p1.y);
+        float k =  (p1.y - p0.y) / (p2.y - p0.y);
         m.position = p0 + k * (p2 - p0);
         m.color = tri->v[0].color + k * (tri->v[2].color - tri->v[0].color);
 //        m.normal = 
@@ -913,40 +716,42 @@ void Renderer::DiffTriangle(Triangle *tri)
     */
 void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const RendVertex &v2)
 {
-    int dy = v1.position.y - v0.position.y;
+    float dy = v1.position.y - v0.position.y;
     float dx_left = (v2.position.x - v0.position.x) / dy;
     float dx_right = (v1.position.x - v0.position.x) / dy;
 
     Vector4 dc_left = (v2.color - v0.color) / dy;
     Vector4 dc_right = (v1.color - v0.color) / dy;
 
-    int x_begin = (int)v0.position.x;
-    int x_end = (int)v0.position.x + 1;
+    float x_begin = v0.position.x;
+    float x_end = v0.position.x + 1;
     Vector4 color_begin = v0.color;
     Vector4 color_end = v0.color;
 
     int y = (int)v0.position.y;
     if (y < 0)
     {
+        float d = -v0.position.y;
+        x_begin += dx_left * d;
+        x_end += dx_right * d;
+        color_begin += dc_left * d;
+        color_end += dc_right * d;
         y = 0;
-        dy = -y;
-        x_begin += dx_left * dy;
-        x_end += dx_right * dy;
-        color_begin += dc_left * dy;
-        color_end += dc_right * dy;
     }
 
-    for (; y < min_t(round(v1.position.y), height_); ++y)
+    // floor v1.position.y
+    for (; y < min_t((int)v1.position.y, height_); ++y)
     {
-        int x = x_begin;
+        int x = (int)x_begin;
         Vector4 dc = (color_begin - color_end) / (x_begin - x_end);
         Vector4 c = color_begin;
-        if (x < 0)
+        if (x_begin < 0)
         {
-            c += dc * (-x);
+            c += dc * (-x_begin);
             x = 0;
         }
-        for (; x < min_t(x_end, width_); ++x, c += dc)
+        // floor x_end
+        for (; x < min_t((int)x_end, width_); ++x, c += dc)
         {
             uint32 cl = vector4_to_ARGB32(c);
             DrawPixel(x, y, cl);
@@ -970,40 +775,40 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
     */
 void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, const RendVertex &v2)
 {
-    int dy = v2.position.y - v0.position.y;
+    float dy = v2.position.y - v0.position.y;
     float dx_left = (v2.position.x - v0.position.x) / dy;
     float dx_right = (v2.position.x - v1.position.x) / dy;
 
     Vector4 dc_left = (v2.color - v0.color) / dy;
     Vector4 dc_right = (v2.color - v1.color) / dy;
 
-    int x_begin = (int)v0.position.x;
-    int x_end = (int)v1.position.x + 1;
+    float x_begin = v0.position.x;
+    float x_end = v1.position.x + 1;
     Vector4 color_begin = v0.color;
     Vector4 color_end = v1.color;
 
     int y = (int)v0.position.y;
     if (y < 0)
     {
+        float d = (-v0.position.y);
+        x_begin += dx_left * d;
+        x_end += dx_right * d;
+        color_begin += dc_left * d;
+        color_end += dc_right * d;
         y = 0;
-        dy = -y;
-        x_begin += dx_left * dy;
-        x_end += dx_right * dy;
-        color_begin += dc_left * dy;
-        color_end += dc_right * dy;
     }
 
-    for (; y < min_t(round(v1.position.y), height_); ++y)
+    for (; y < min_t((int)v2.position.y, height_); ++y)
     {
-        int x = x_begin;
+        int x = (int)x_begin;
         Vector4 dc = (color_begin - color_end) / (x_begin - x_end);
         Vector4 c = color_begin;
-        if (x < 0)
+        if (x_begin < 0)
         {
-            c += dc * (-x);
+            c += dc * (-x_begin);
             x = 0;
         }
-        for (; x < min_t(x_end, width_); ++x, c += dc)
+        for (; x < min_t((int)x_end, width_); ++x, c += dc)
         {
             uint32 cl = vector4_to_ARGB32(c);
             DrawPixel(x, y, cl);
@@ -1015,49 +820,7 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
     }
 }
 
-// 平底三角形，朝上
-void Renderer::FlatTriangleUp(const Vector3 &v0, const Vector3 &v1, const Vector3 &v2, uint32 color)
-{
-    assert(equalf(v1.y, v2.y));
-    assert(v0.y < v1.y);
-    float dx_left = (v2.x - v0.x) / (v2.y - v0.y);
-    float dx_right = (v1.x - v0.x) / (v2.y - v0.y);
 
-    float sx = v0.x;
-    float ex = v0.x;
-
-    for (int i = round(v0.y); i < round(v1.y); ++i)
-    {
-        for (int j = round(sx); j < round(ex); ++j)
-        {
-            DrawPixel(j, i, color);
-        }
-        sx += dx_left;
-        ex += dx_right;
-    }
-}
-
-// 平顶三角形，朝下
-void Renderer::FlatTriangleDown(const Vector3 &v0, const Vector3 &v1, const Vector3 &v2, uint32 color)
-{
-    assert(equalf(v0.y, v1.y));
-    assert(v0.y < v2.y);
-    float dx_left = (v2.x - v0.x) / (v2.y - v0.y);
-    float dx_right = (v2.x - v1.x) / (v2.y - v0.y);
-
-    float sx = v0.x;
-    float ex = v1.x;
-
-    for (int i = round(v0.y); i < round(v2.y); ++i)
-    {
-        for (int j = round(sx); j < round(ex); ++j)
-        {
-            DrawPixel(j, i, color);
-        }
-        sx += dx_left;
-        ex += dx_right;
-    }
-}
 
 /*
 void Renderer::SetLight(Light *light)

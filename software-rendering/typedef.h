@@ -1,4 +1,5 @@
 #pragma once
+#include <float.h>
 #include <math.h>
 
 #ifndef WIN64
@@ -72,7 +73,7 @@ inline float absf(float x)
         return -x;
 }
 
-inline bool equalf(float a, float b)
+inline bool equalf(float a, float b, float precise = FLT_EPSILON)
 {
-    return (absf(a - b) < gkFloatPrecise);
+    return (absf(a - b) < precise);
 }

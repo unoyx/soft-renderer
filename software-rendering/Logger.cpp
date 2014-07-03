@@ -4,6 +4,10 @@ using std::string;
 
 const int LOG_FILE_SZIE = 1024 * 50;
 
+#pragma warning(push)
+// 禁用unsafe function的警告
+#pragma warning(disable:4996)
+
 Logger::Logger(void)
     // 1mb
     :data_(new char[LOG_FILE_SZIE])
@@ -100,3 +104,7 @@ void Logger::FlushToFile()
     // remove size to 0
     size_ = 0;
 }
+
+#pragma warning(default:4996)
+//  启用unsafe function的警告
+#pragma warning(pop)

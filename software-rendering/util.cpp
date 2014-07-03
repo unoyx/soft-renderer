@@ -13,7 +13,7 @@ void get_primitive(PrimitiveType t, Primitive *pri)
         primitive.colors[1] = Vector4(0, 1.0, 0, 1.0);
         primitive.colors[2] = Vector4(0, 0, 1.0, 1.0);
 
-        primitive.position[0] = Vector3(0, 0.01, 1);
+        primitive.position[0] = Vector3(0, 0, 1);
         primitive.position[1] = Vector3(0.25, 0, 0);
         primitive.position[2] = Vector3(-0.25, 0, 0);
 
@@ -26,7 +26,7 @@ void get_primitive(PrimitiveType t, Primitive *pri)
         primitive.colors[1] = Vector4(0, 1.0, 0, 1.0);
         primitive.colors[2] = Vector4(0, 0, 1.0, 1.0);
 
-        primitive.position[0] = Vector3(0, 0.01, -1);
+        primitive.position[0] = Vector3(0, 0.01f, -1);
         primitive.position[1] = Vector3(0.25, 0, 0);
         primitive.position[2] = Vector3(-0.25, 0, 0);
 
