@@ -1,0 +1,7 @@
+collada/
+Debug/
+fbx/
+ipch/
+
+*.opensdf
+*.sdf

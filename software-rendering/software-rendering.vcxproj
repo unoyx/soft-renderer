@@ -40,6 +40,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <LibraryPath>$(MSBuildProjectDirectory)\thirdpart\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>D:\lib\dx\Include;$(IncludePath)</IncludePath>
+    <ReferencePath>D:\lib\dx\Lib\x86;$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -88,6 +90,7 @@
     <ClCompile Include="Primitive.cpp" />
     <ClCompile Include="quaternion.cpp" />
     <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -102,6 +105,7 @@
     <ClInclude Include="Primitive.h" />
     <ClInclude Include="quaternion.h" />
     <ClInclude Include="Renderer.h" />
+    <ClInclude Include="Texture2D.h" />
     <ClInclude Include="typedef.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="vector.h" />
