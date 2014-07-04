@@ -75,7 +75,7 @@ HWND App::Initialize(HINSTANCE inst, int width, int height)
     camera_.set_aspect(aspect);
 
     texture_ = renderer_.CreateTexture2D();
-    bool ret = texture_.Load("D:\\src\\msvc\\software-rendering\\Debug\\tex.jpg");
+    bool ret = texture_.Load("D:\\src\\msvc\\software-rendering\\Debug\\tex2.jpg");
     assert(ret);
     ret = texture_.Lock();
     assert(ret);
