@@ -1,6 +1,7 @@
 #pragma once
 #include "mathdef.h"
 #include "vector.h"
+#include "Texture2D.h"
 
 class Material;
 
@@ -9,17 +10,21 @@ class Primitive
 public:
     Primitive(void)
         :size(size)
-        ,position(nullptr)
+        ,positions(nullptr)
         ,normals(nullptr)
         ,colors(nullptr)
-        ,material(nullptr){}
+        ,uvs(nullptr)
+        ,material(nullptr)
+        ,texture(nullptr) {}
 
-    Primitive(int size, Material *material)
+    Primitive(int size, Material *material, Texture2D *texture)
         :size(size)
-        ,position(new Vector3[size])
+        ,positions(new Vector3[size])
         ,normals(new Vector3[size])
         ,colors(new Vector4[size])
-        ,material(material) {}
+        ,uvs(new Vector2[size])
+        ,material(material)
+        ,texture(texture){}
 
     ~Primitive(void) 
     {
@@ -28,42 +33,50 @@ public:
 
     Primitive(Primitive &&r)
         :size(r.size)
-        ,position(r.position)
+        ,positions(r.positions)
         ,normals(r.normals)
         ,colors(r.colors)
+        ,uvs(r.uvs)
         ,material(r.material)
+        ,texture(r.texture)
     {
         r.size = 0;
-        r.position = nullptr;
+        r.positions = nullptr;
         r.normals = nullptr;
         r.colors = nullptr;
+        r.uvs = nullptr;
         r.material = nullptr;
+        r.texture = nullptr;
     }
 
     Primitive &operator=(Primitive &&rhs)
     {
         Clear();
         size = rhs.size;
-        position = rhs.position;
+        positions = rhs.positions;
         normals = rhs.normals;
         colors = rhs.colors;
+        uvs = rhs.uvs;
         material = rhs.material;
+        texture = rhs.texture;
 
         rhs.size = 0;
-        rhs.position = nullptr;
+        rhs.positions = nullptr;
         rhs.normals = nullptr;
         rhs.colors = nullptr;
+        rhs.uvs = nullptr;
         rhs.material = nullptr;
+        rhs.texture = nullptr;
 
         return *this;
     }
 
     void Clear(void)
     {
-        if (position)
+        if (positions)
         {
-            delete[] position;
-            position = nullptr;
+            delete[] positions;
+            positions = nullptr;
         }
         if (normals)
         {
@@ -77,16 +90,18 @@ public:
         }
 
         material = nullptr;
+        texture = nullptr;
         size = 0;
     }
 public:
     int size;
-    Vector3 *position;
+    Vector3 *positions;
     Vector3 *normals;
     Vector4 *colors;
+    Vector2 *uvs;
     Material *material;
+    Texture2D *texture;
 
-//    Texture *texture;
 //    Light *light;
 private:
 };
@@ -98,7 +113,7 @@ public:
     Vector4 position;
     Vector4 normal;
     Vector4 color;
-//    Vector2 uv;
+    Vector2 uv;
 };
 
 class RendPrimitive

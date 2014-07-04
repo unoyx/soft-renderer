@@ -7,6 +7,7 @@ App::App()
     :wnd_(nullptr)
     ,width_(0)
     ,height_(0)
+    ,texture_(nullptr)
 {
 }
 
@@ -73,6 +74,13 @@ HWND App::Initialize(HINSTANCE inst, int width, int height)
     float aspect = static_cast<float>(width) / static_cast<float> (height);
     camera_.set_aspect(aspect);
 
+    texture_ = renderer_.CreateTexture2D();
+    bool ret = texture_.Load("D:\\src\\msvc\\software-rendering\\Debug\\tex.jpg");
+    assert(ret);
+    ret = texture_.Lock();
+    assert(ret);
+    renderer_.SetTexture(&texture_);
+
     return wnd_;
 }
 
@@ -119,33 +127,38 @@ void App::Update(void)
 
     input_mgr_.Update();
     
-    const float move_speed = 0.5f * diff_tick / 100.0f;
+    const float move_dist = 0.5f * diff_tick / 100.0f;
     if (input_mgr_.KeyDown(DIK_D))
-        camera_.Move(Vector3(move_speed, 0, 0));
+        camera_.Move(Vector3(move_dist, 0, 0));
     if (input_mgr_.KeyDown(DIK_A))
-        camera_.Move(Vector3(-move_speed, 0, 0));
+        camera_.Move(Vector3(-move_dist, 0, 0));
 
     if (input_mgr_.KeyDown(DIK_W))
-        camera_.Move(Vector3(0, 0, move_speed));
+        camera_.Move(Vector3(0, 0, move_dist));
     if (input_mgr_.KeyDown(DIK_S))
-        camera_.Move(Vector3(0, 0, -move_speed));
+        camera_.Move(Vector3(0, 0, -move_dist));
 
     if (input_mgr_.KeyDown(DIK_Q))
-        camera_.Move(Vector3(0, move_speed, 0));
+        camera_.Move(Vector3(0, move_dist, 0));
     if (input_mgr_.KeyDown(DIK_E))
-        camera_.Move(Vector3(0, -move_speed, 0));
+        camera_.Move(Vector3(0, -move_dist, 0));
 
-    const float rotate_speed = 3.0f * diff_tick / 100.0f;
+    const float rotate_angle = 3.0f * diff_tick / 100.0f;
 
     if (input_mgr_.KeyDown(DIK_UP))
-        camera_.Rotate(rotate_speed, 0);
+        camera_.Rotate(rotate_angle, 0);
     if (input_mgr_.KeyDown(DIK_DOWN))
-        camera_.Rotate(-rotate_speed, 0);
+        camera_.Rotate(-rotate_angle, 0);
     if (input_mgr_.KeyDown(DIK_LEFT))
-        camera_.Rotate(0, rotate_speed);
+        camera_.Rotate(0, rotate_angle);
     if (input_mgr_.KeyDown(DIK_RIGHT))
-        camera_.Rotate(0, -rotate_speed);
+        camera_.Rotate(0, -rotate_angle);
 
+if (input_mgr_.KeyPressed(DIK_R))
+{
+    camera_.set_ori(Quat::GetIdentity());
+    camera_.set_pos(Vector3(0, 0, -1));
+}
     static bool bf_culling = true;
 
     if (input_mgr_.KeyPressed(DIK_B))
@@ -172,10 +185,22 @@ void App::Update(void)
         p %= kPrimitiveSize;
 
     } 
-    get_primitive((PrimitiveType)p, &primitive);
-
     renderer_.SetCamera(&camera_);
 
+    //int w = texture_.get_width();
+    //int h = texture_.get_height();
+    //for (int x = 0; x < min_t(w, width_); ++x)
+    //{
+    //    for (int y = 0; y < min_t(h, height_); ++y)
+    //    {
+    //        uint32 c = texture_.GetDate(x, y);
+
+    //        renderer_.DrawPixel(x, y, c);
+    //    }
+    //}
+
+
+    get_primitive((PrimitiveType)p, &primitive);
     renderer_.DrawPrimitive(&primitive);
 
     //for (int i = 0; i < width_; ++i)

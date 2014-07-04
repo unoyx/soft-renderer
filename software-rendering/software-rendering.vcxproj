@@ -39,9 +39,9 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <LibraryPath>$(MSBuildProjectDirectory)\thirdpart\lib;$(LibraryPath)</LibraryPath>
-    <IncludePath>D:\lib\dx\Include;$(IncludePath)</IncludePath>
-    <ReferencePath>D:\lib\dx\Lib\x86;$(ReferencePath)</ReferencePath>
+    <LibraryPath>$(MSBuildProjectDirectory)\thirdpart\lib;D:\lib\dx\Lib\x86;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(WindowsSdkDir)include;D:\lib\dx\Include;$(IncludePath)</IncludePath>
+    <ReferencePath>$(ReferencePath)</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -58,7 +58,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d9.lib;dinput8.lib;dxguid.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d9.lib;d3dx9.lib;dinput8.lib;dxguid.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

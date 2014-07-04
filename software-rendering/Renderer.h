@@ -11,9 +11,6 @@
 class Camera;
 class Light;
 
-using std::string;
-using std::vector;
-
 enum MatrixType
 {
     kModelView = 0,
@@ -27,6 +24,8 @@ enum LightingType
     kGouraud = 2
 };
 
+class Texture2D;
+
 class Renderer
 {
 public:
@@ -34,6 +33,25 @@ public:
     ~Renderer(void);
     void Initialize(HWND hwnd, int width, int height);
     void Uninitialize(void);
+
+    Texture2D CreateTexture2D(void);
+    void SetTexture(Texture2D *texture)
+    {
+        if (texture_ && texture_->IsLocked())
+        {
+            texture_->UnLock();
+        }
+        texture_ = texture;
+        if (!texture_->IsLocked())
+        {
+            texture_->Lock();
+        }
+    }
+
+    Texture2D *GetTexture(void)
+    {
+        return texture_;
+    }
 
     void DrawLine(RendVertex v0, RendVertex v1);
 
@@ -58,7 +76,7 @@ public:
         }
         SelectObject(hdc, font_);
         SetBkMode(hdc, TRANSPARENT);
-        ::SetTextColor(hdc, color_);
+        SetTextColor(hdc, text_color_);
         for (int i = 0; i < text_string_.size(); ++i)
         {
             RECT rect;
@@ -66,20 +84,19 @@ public:
             rect.right = text_string_[i].size() * 10 + rect.left;
             rect.top = text_pos_[i].y;
             rect.bottom = rect.top + 20;
-            ::DrawText(hdc, text_string_[i].c_str(), text_string_[i].length(), &rect, DT_LEFT);
+            DrawText(hdc, text_string_[i].c_str(), text_string_[i].length(), &rect, DT_LEFT);
         }
         text_pos_.clear();
         text_string_.clear();
         d3d_backbuffer_->ReleaseDC(hdc);
     }
     
-    void SetTextColor(uint32 color)
+    void set_text_color(uint32 color)
     {
-        color_ = color;
+        text_color_ = color;
     }
 
-    // Fixme GetDC的使用有限制条件，当前调用失败。参见 http://msdn.microsoft.com/en-us/library/windows/desktop/bb205894(v=vs.85).aspx
-    void DrawText(Point pos, string text)
+    void DrawScreenText(Point pos, string text)
     {
         text_pos_.push_back(pos);
         text_string_.push_back(text);
@@ -169,10 +186,11 @@ private:
     RendPrimitive rend_primitive_;
     std::vector<Triangle> triangles_;
 
-    vector<Point> text_pos_;
-    vector<string> text_string_;
-    uint32 color_;
+    std::vector<Point> text_pos_;
+    std::vector<std::string> text_string_;
+    uint32 text_color_;
 
+    Texture2D *texture_;
     bool flat_;
 };
 

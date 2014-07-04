@@ -17,11 +17,11 @@ static inline uint32 vector4_to_ARGB32(const Vector4 &c)
 
 static inline Vector4 ARGB32_to_vector4(uint32 c)
 {
-    float a = (float)(uint8)(c >> 24);
-    float r = (float)(uint8)(c >> 16);
-    float g = (float)(uint8)(c >> 8);
-    float b = (float)(uint8)(c >> 0);
-    Vector4 ret(a / 255.0f, r / 255.0f, g / 255.0f, b / 255.0f);
+    uint8 a = ((uint8)(c >> 24) & 0xFF);
+    uint8 r = ((uint8)(c >> 16) & 0xFF);
+    uint8 g = ((uint8)(c >> 8) & 0xFF);
+    uint8 b = ((uint8)(c >> 0) & 0xFF);
+    Vector4 ret(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
     return ret;
 }
 

@@ -3,6 +3,10 @@
 #include "util.h"
 #include "Camera.h"
 #include "Light.h"
+#include "Texture2D.h"
+
+using std::vector;
+using std::string;
 
 Renderer::Renderer(void)
     :d3d9_(nullptr)
@@ -18,7 +22,8 @@ Renderer::Renderer(void)
     ,flat_(false)
     ,light_type_(kNoLight)
     ,camera_(nullptr)
-    ,color_(RGB(255, 0, 0))
+    ,text_color_(RGB(255, 0, 0))
+    ,texture_(nullptr)
 {
 }
 
@@ -104,6 +109,17 @@ void Renderer::Uninitialize(void)
     SafeRelease(&d3d9_);
 }
 
+Texture2D Renderer::CreateTexture2D(void)
+{
+    if (d3d_device_ == nullptr)
+    {
+        assert(0);
+        return Texture2D(nullptr);
+    }
+    Texture2D tex(d3d_device_);
+    return tex;
+}
+
 void Renderer::SetCamera(Camera *camera)
 {
     camera_ = camera;
@@ -112,8 +128,8 @@ void Renderer::SetCamera(Camera *camera)
 // 返回false时该线段完全在裁减区域之外
 static bool clip_line_2d(int min_x, int max_x, int min_y, int max_y, RendVertex &v0, RendVertex &v1)
 {
-    Logger::GtLogInfo("clip before v0: %8.3f %f8.3\n", v0.position.x, v0.position.y);
-    Logger::GtLogInfo("clip before v1: %8.3f %f8.3\n", v1.position.x, v1.position.y);
+//    Logger::GtLogInfo("clip before v0: %8.3f %f8.3\n", v0.position.x, v0.position.y);
+//    Logger::GtLogInfo("clip before v1: %8.3f %f8.3\n", v1.position.x, v1.position.y);
     static const int BUF_SIZE = 4;
     float x0 = v0.position.x;
     float y0 = v0.position.y;
@@ -184,8 +200,8 @@ static bool clip_line_2d(int min_x, int max_x, int min_y, int max_y, RendVertex 
             v1.position = s.position + u2 * (e.position - s.position);
             v1.color = e.color + u2 * (e.color - s.color);
         }
-        Logger::GtLogInfo("clip after v0: %8.3f %f8.3\n", v0.position.x, v0.position.y);
-        Logger::GtLogInfo("clip after v1: %8.3f %f8.3\n", v1.position.x, v1.position.y);
+//        Logger::GtLogInfo("clip after v0: %8.3f %f8.3\n", v0.position.x, v0.position.y);
+//        Logger::GtLogInfo("clip after v1: %8.3f %f8.3\n", v1.position.x, v1.position.y);
         return true;
     }
 }
@@ -304,7 +320,7 @@ void Renderer::BeginFrame(void)
     d3d_device_->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 0, 0);
     D3DLOCKED_RECT lockinfo;
     memset(&lockinfo, 0, sizeof(lockinfo));
-    HRESULT res = d3d_backbuffer_->LockRect(&lockinfo, NULL, D3DLOCK_DISCARD);
+    HRESULT res = d3d_backbuffer_->LockRect(&lockinfo, nullptr, D3DLOCK_DISCARD);
     if (FAILED(res))
     {
         Logger::GtLogError("d3d LockRect failed: %d", GetLastError());
@@ -331,10 +347,11 @@ void Renderer::DrawPrimitive(Primitive *primitive)
 
     for (int i = 0; i < rend_primitive_.size; ++i)
     {
-        rend_primitive_.vertexs[i].position.SetVector3(primitive->position[i]);
+        rend_primitive_.vertexs[i].position.SetVector3(primitive->positions[i]);
         rend_primitive_.vertexs[i].position.w = 1.0f;
         rend_primitive_.vertexs[i].normal.SetVector3(primitive->normals[i]);
         rend_primitive_.vertexs[i].normal.w = 0.0f;
+        rend_primitive_.vertexs[i].uv = primitive->uvs[i];
         rend_primitive_.vertexs[i].color = primitive->colors[i];
     }
 
@@ -429,10 +446,12 @@ static void clip_near_plane(const RendVertex &a, const RendVertex &b, RendVertex
     assert(pos.z > 0);
     Vector4 nor = k * (b.normal - a.normal) + a.normal;
     Vector4 col = k * (b.color - a.color) + a.color;
+    Vector2 uv = k * (b.uv - a.uv) + a.uv;
 
     o->position = pos;
     o->normal = nor;
     o->color = col;
+    o->uv = uv;
 }
 
 static bool is_backface(const Vector3 &a, const Vector3 &b, const Vector3 &c)
@@ -604,9 +623,18 @@ void Renderer::Rasterization()
     for (int i = 0; i < triangles_.size(); ++i)
     {
         viewport_transform(width_, height_, &triangles_[i]);
-
+        char text_buf[100];
+        for (int j = 0; j < 3; ++j)
+        {
+            memset(text_buf, 0, sizeof(text_buf));
+            sprintf(text_buf, "x %8.3f y %8.3f z %8.3f", triangles_[i].v[j].position.x,
+                triangles_[i].v[j].position.y,
+                triangles_[i].v[j].position.z);
+            DrawScreenText(Point(10, 20 * (j + 1)), text_buf);
+        }
         if (flat_)
         {
+
             DiffTriangle(&triangles_[i]);
         }
         else
@@ -691,6 +719,7 @@ void Renderer::DiffTriangle(Triangle *tri)
         float k =  (p1.y - p0.y) / (p2.y - p0.y);
         m.position = p0 + k * (p2 - p0);
         m.color = tri->v[0].color + k * (tri->v[2].color - tri->v[0].color);
+        m.uv = tri->v[0].uv + k * (tri->v[2].uv - tri->v[0].uv);
 //        m.normal = 
         // 朝左的三角形
         if (p1.x < m.position.x)
@@ -723,10 +752,15 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
     Vector4 dc_left = (v2.color - v0.color) / dy;
     Vector4 dc_right = (v1.color - v0.color) / dy;
 
+    Vector2 duv_left = (v2.uv - v0.uv) / dy;
+    Vector2 duv_right = (v1.uv - v0.uv) / dy;
+
     float x_begin = v0.position.x;
     float x_end = v0.position.x + 1;
     Vector4 color_begin = v0.color;
     Vector4 color_end = v0.color;
+    Vector2 uv_begin = v0.uv;
+    Vector2 uv_end = v0.uv;
 
     int y = (int)v0.position.y;
     if (y < 0)
@@ -736,7 +770,17 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
         x_end += dx_right * d;
         color_begin += dc_left * d;
         color_end += dc_right * d;
+        uv_begin += duv_left * d;
+        uv_end += duv_right * d;
         y = 0;
+    }
+    
+    int tex_w = 0;
+    int tex_h = 0;
+    if (texture_)
+    {
+        tex_w = texture_->get_width() - 1;
+        tex_h = texture_->get_height() - 1;
     }
 
     // floor v1.position.y
@@ -745,21 +789,32 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
         int x = (int)x_begin;
         Vector4 dc = (color_begin - color_end) / (x_begin - x_end);
         Vector4 c = color_begin;
+        Vector2 duv = (uv_begin - uv_end) / (x_begin - x_end);
+        Vector2 uv = uv_begin;
         if (x_begin < 0)
         {
             c += dc * (-x_begin);
+            uv += duv * (-x_begin);
             x = 0;
         }
         // floor x_end
-        for (; x < min_t((int)x_end, width_); ++x, c += dc)
+        for (; x < min_t((int)x_end, width_); ++x, c += dc, uv += duv)
         {
-            uint32 cl = vector4_to_ARGB32(c);
+            Vector4 cvtex(1.0, 1.0, 1.0, 1.0);
+            if (texture_)
+            {
+                uint32 ctex = texture_->GetDate((int)(uv.u * tex_w), (int)(uv.v * tex_h));
+                cvtex = ARGB32_to_vector4(ctex);
+            }
+            uint32 cl = vector4_to_ARGB32(c * cvtex);
             DrawPixel(x, y, cl);
         }
         x_begin += dx_left;
         x_end += dx_right;
         color_begin += dc_left;
         color_end += dc_right;
+        uv_begin += duv_left;
+        uv_end += duv_right;
     }
 }
 
@@ -782,10 +837,15 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
     Vector4 dc_left = (v2.color - v0.color) / dy;
     Vector4 dc_right = (v2.color - v1.color) / dy;
 
+    Vector2 duv_left = (v2.uv - v0.uv) / dy;
+    Vector2 duv_right = (v2.uv - v1.uv) / dy;
+
     float x_begin = v0.position.x;
     float x_end = v1.position.x + 1;
     Vector4 color_begin = v0.color;
     Vector4 color_end = v1.color;
+    Vector2 uv_begin = v0.uv;
+    Vector2 uv_end = v1.uv;
 
     int y = (int)v0.position.y;
     if (y < 0)
@@ -795,7 +855,17 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
         x_end += dx_right * d;
         color_begin += dc_left * d;
         color_end += dc_right * d;
+        uv_begin += duv_left * d;
+        uv_end += duv_right * d;
         y = 0;
+    }
+
+    int tex_w = 0;
+    int tex_h = 0;
+    if (texture_)
+    {
+        tex_w = texture_->get_width() - 1;
+        tex_h = texture_->get_height() - 1;
     }
 
     for (; y < min_t((int)v2.position.y, height_); ++y)
@@ -803,20 +873,31 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
         int x = (int)x_begin;
         Vector4 dc = (color_begin - color_end) / (x_begin - x_end);
         Vector4 c = color_begin;
+        Vector2 duv = (uv_begin - uv_end) / (x_begin - x_end);
+        Vector2 uv = uv_begin;
         if (x_begin < 0)
         {
             c += dc * (-x_begin);
+            uv += duv * (-x_begin);
             x = 0;
         }
-        for (; x < min_t((int)x_end, width_); ++x, c += dc)
+        for (; x < min_t((int)x_end, width_); ++x, c += dc, uv += duv)
         {
-            uint32 cl = vector4_to_ARGB32(c);
+            Vector4 cvtex(1.0, 1.0, 1.0, 1.0);
+            if (texture_)
+            {
+                uint32 ctex = texture_->GetDate((int)(uv.u * tex_w), (int)(uv.v * tex_h));
+                cvtex = ARGB32_to_vector4(ctex);
+            }
+            uint32 cl = vector4_to_ARGB32(c * cvtex);
             DrawPixel(x, y, cl);
         }
         x_begin += dx_left;
         x_end += dx_right;
         color_begin += dc_left;
         color_end += dc_right;
+        uv_begin += duv_left;
+        uv_end += duv_right;
     }
 }
 
