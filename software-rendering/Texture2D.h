@@ -5,6 +5,14 @@
 
 using std::string;
 
+class Vector4;
+
+enum FilteringType
+{
+    kNoneFiltering = 0,
+    kBilinterFiltering = 1
+};
+
 class Texture2D
 {
 public:
@@ -21,6 +29,7 @@ public:
         ,data_(rhs.data_)
         ,is_loaded_(rhs.is_loaded_)
         ,is_locked_(rhs.is_locked_)
+        ,filtering_(rhs.filtering_)
     {
         rhs.device_ = nullptr;
         rhs.texture_ = nullptr;
@@ -32,6 +41,7 @@ public:
         rhs.data_ = nullptr;
         rhs.is_loaded_ = false;
         rhs.is_locked_ = false;
+        rhs.filtering_ = kNoneFiltering;
     }
 
     Texture2D &operator=(Texture2D &&rhs)
@@ -50,6 +60,7 @@ public:
         data_ = rhs.data_;
         is_loaded_ = rhs.is_loaded_;
         is_locked_ = rhs.is_locked_;
+        filtering_ = rhs.filtering_;
 
         rhs.device_ = nullptr;
         rhs.texture_ = nullptr;
@@ -61,6 +72,7 @@ public:
         rhs.data_ = nullptr;
         rhs.is_loaded_ = false;
         rhs.is_locked_ = false;
+        rhs.filtering_ = kNoneFiltering;
 
         return *this;
     }
@@ -70,7 +82,8 @@ public:
     bool Lock(void);
     void UnLock(void);
 
-    uint32 GetDate(int x, int y);
+    uint32 GetData(int x, int y);
+    Vector4 GetDataUV(float u, float v);
 
     int get_width(void)
     {
@@ -87,6 +100,11 @@ public:
         return format_;
     }
 
+    void set_filtering(FilteringType t)
+    {
+        filtering_ = t;
+    }
+
     bool IsLoaded(void)
     {
         return is_loaded_;
@@ -97,6 +115,8 @@ public:
         return is_locked_;
     }
 
+private:
+    Vector4 getDataVector4(int x, int y);
 private:
     Texture2D(void);
 
@@ -110,5 +130,6 @@ private:
     uint32 *data_;
     bool is_loaded_;
     bool is_locked_;
+    FilteringType filtering_;
 };
 

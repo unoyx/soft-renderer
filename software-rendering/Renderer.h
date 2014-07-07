@@ -151,7 +151,19 @@ public:
     {
         flat_ = flag;
     }
+
     void draw_line(Point p0, Point p1, uint32 c);
+
+    void SwitchDiffPerspective(void)
+    {
+        diff_perspective = !diff_perspective;
+    }
+
+    void SwitchTriUpDown(void)
+    {
+        tri_ += 1;
+        tri_ %= 3;
+    }
 
 private:
     void BresenhamLine(Point p0, Point p1, uint32 c);
@@ -192,5 +204,7 @@ private:
 
     Texture2D *texture_;
     bool flat_;
+    bool diff_perspective;
+    int tri_;
 };
 

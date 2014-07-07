@@ -3,6 +3,7 @@
 #include <assert.h>
 #include "mathdef.h"
 #include "util.h"
+#include "vector.h"
 #include "Logger.h"
 
 Texture2D::Texture2D(IDirect3DDevice9 *device)
@@ -15,6 +16,7 @@ Texture2D::Texture2D(IDirect3DDevice9 *device)
     ,format_(D3DFMT_UNKNOWN)
     ,is_loaded_(false)
     ,is_locked_(false)
+    ,filtering_(kNoneFiltering)
 {
 }
 
@@ -134,7 +136,7 @@ void Texture2D::UnLock(void)
     is_locked_ = false;
 }
 
-uint32 Texture2D::GetDate(int x, int y)
+uint32 Texture2D::GetData(int x, int y)
 {
     if (!is_loaded_ || !is_locked_)
     {
@@ -143,20 +145,110 @@ uint32 Texture2D::GetDate(int x, int y)
     }
     if (x < 0 || x >= width_ || y < 0 || y >= height_)
     {
-        assert(0);
         Logger::GtLogError("access texture is out of range");
+        assert(0);
+        return 0;
     }
     
     uint32 c = data_[y * (pitch_ / 4) + x];
-    if (format_ == D3DFMT_A8R8G8B8 || format_ == D3DFMT_X8R8G8B8)
+    if (format_ == D3DFMT_A8R8G8B8)
     {
-        uint32 a = ((format_ == D3DFMT_A8R8G8B8) ? ((c >> 24) & 0xFF) : 0);
-        uint32 r = (c >> 16) & 0xFF;
-        uint32 g = (c >> 8) & 0xFF;
-        uint32 b = (c >> 0) & 0xFF;
-        return ARGB32(0, r, g, b);
+        return c;
+    }
+    if (format_ == D3DFMT_X8R8G8B8)
+    {
+        return (c | (0xFF << 24));
     } else 
     {
         return 0;
     }
+}
+
+Vector4 Texture2D::GetDataUV(float u, float v)
+{
+    if (!is_loaded_ || !is_locked_)
+    {
+        Logger::GtLogError("can't get data from texture without loaded or locked: %s", filename_.c_str());
+        return Vector4();
+    }
+    if (u < 0 || u > 1.0 || v < 0 || v > 1.0)
+    {
+        Logger::GtLogError("access texture is out of range");
+        assert(0);
+        return Vector4();
+    }
+
+    float x = u * width_;
+    float y = v * height_;
+    if (filtering_ == kNoneFiltering)
+    {
+        return getDataVector4(static_cast<int>(x), static_cast<int>(y));
+    }
+    else if (filtering_ == kBilinterFiltering)
+    {
+        int x_ = static_cast<int>(x);
+        int y_ = static_cast<int>(y);
+        float x_off = x - x_;
+        float y_off = y - y_;
+
+        if (x_ == width_)
+        {
+            if (y_ == height_)
+            {
+                return getDataVector4(x_, y_);
+            }
+            else
+            {
+                // lerp y
+                Vector4 d00 = getDataVector4(x_, y_);
+                Vector4 d10 = getDataVector4(x_, y_ + 1);
+                d00 = lerp(d00, d10, y_off);
+                return d00;
+            }
+        }
+        else
+        {
+            if (y == height_)
+            {
+                Vector4 d00 = getDataVector4(x_, y_);
+                Vector4 d01 = getDataVector4(x_ + 1, y_);
+                d00 = lerp(d00, d01, x_off);
+                return d00;
+            }
+            else
+            {
+                Vector4 d00 = getDataVector4(x_, y_);
+                Vector4 d01 = getDataVector4(x_ + 1, y_);
+
+                d00 = lerp(d00, d01, x_off);
+
+                Vector4 d10 = getDataVector4(x_, y_ + 1);
+                Vector4 d11 = getDataVector4(x_ + 1, y_ + 1);
+
+                d10 = lerp(d10, d11, x_off);
+
+                return lerp(d00, d10, y_off);
+            }
+
+        }
+
+    }
+    assert(0);
+    return Vector4();
+}
+
+Vector4 Texture2D::getDataVector4(int x, int y)
+{
+    int idx = static_cast<int>(y) * pitch_ / 4 + static_cast<int>(x);
+    uint32 d = data_[idx];
+    if (format_ == D3DFMT_A8R8G8B8)
+    {
+        return ARGB32_to_vector4(d);
+    }
+    if (format_ == D3DFMT_X8R8G8B8)
+    {
+        return ARGB32_to_vector4(d | (0xFF << 24));
+    }
+    assert(0);
+    return Vector4();
 }

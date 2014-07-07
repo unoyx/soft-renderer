@@ -77,3 +77,10 @@ inline bool equalf(float a, float b, float precise = FLT_EPSILON)
 {
     return (absf(a - b) < precise);
 }
+
+template<typename T>
+inline T lerp(const T &a, const T &b, float k)
+{
+    T c = k * a + (1.0 - k) * b;
+    return c;
+}

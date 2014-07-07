@@ -154,11 +154,11 @@ void App::Update(void)
     if (input_mgr_.KeyDown(DIK_RIGHT))
         camera_.Rotate(0, -rotate_angle);
 
-if (input_mgr_.KeyPressed(DIK_R))
-{
-    camera_.set_ori(Quat::GetIdentity());
-    camera_.set_pos(Vector3(0, 0, -1));
-}
+    if (input_mgr_.KeyPressed(DIK_R))
+    {
+        camera_.set_ori(Quat::GetIdentity());
+        camera_.set_pos(Vector3(0, 0, -1));
+    }
     static bool bf_culling = true;
 
     if (input_mgr_.KeyPressed(DIK_B))
@@ -174,6 +174,24 @@ if (input_mgr_.KeyPressed(DIK_R))
         bf_flat = !bf_flat;
     }
 
+    if (input_mgr_.KeyPressed(DIK_MINUS))
+    {
+        renderer_.SwitchDiffPerspective();
+    }
+
+    if (input_mgr_.KeyPressed(DIK_EQUALS))
+    {
+        renderer_.SwitchTriUpDown();
+    }
+
+    static int filt = kNoneFiltering;
+    if (input_mgr_.KeyPressed(DIK_0))
+    {
+        ++filt;
+        filt %= 2;
+        texture_.set_filtering(static_cast<FilteringType>(filt));
+    }
+
     renderer_.BeginFrame();
 
     static int p = 0;
@@ -185,6 +203,9 @@ if (input_mgr_.KeyPressed(DIK_R))
         p %= kPrimitiveSize;
 
     } 
+
+
+
     renderer_.SetCamera(&camera_);
 
     //int w = texture_.get_width();
