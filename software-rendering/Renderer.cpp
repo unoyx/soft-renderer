@@ -20,7 +20,7 @@ Renderer::Renderer(void)
     ,z_buffer_(nullptr)
     ,light_(nullptr)
     ,flat_(false)
-    ,shading_(kFrame)
+    ,shading_mode_(kFrame)
     ,camera_(nullptr)
     ,text_color_(RGB(255, 0, 0))
     ,texture_(nullptr)
@@ -347,73 +347,78 @@ void Renderer::DrawPrimitive(Primitive *primitive)
     {
         rend_primitive_.vertexs[i].position.SetVector3(primitive->positions[i]);
         rend_primitive_.vertexs[i].position.w = 1.0f;
-        rend_primitive_.vertexs[i].normal.SetVector3(primitive->normals[i]);
-        rend_primitive_.vertexs[i].normal.w = 0.0f;
+        rend_primitive_.vertexs[i].normal = primitive->normals[i];
         rend_primitive_.vertexs[i].uv = primitive->uvs[i];
         rend_primitive_.vertexs[i].color = primitive->colors[i];
     }
 
     Matrix44 model_view = camera_->GetModelViewMatrix();
     ModelViewTransform(model_view);
+    Lighting();
     float z_far = camera_->get_far();
     float z_near = camera_->get_near();
-    // Lighting();
+    Clipping(z_near, z_far);
     Matrix44 perspective = camera_->GetPerpectivMatrix();
     Projection(perspective);
-
-    Clipping(z_near, z_far);
 }
 
 // rend_primitive 相机空间
 void Renderer::ModelViewTransform(const Matrix44 &model_view)
 {
+    Matrix33 normal_trans = model_view.GetMatrix33();
+    normal_trans.SetInverse();
+    normal_trans.SetTranspose();
     for (int i = 0; i < rend_primitive_.size; ++i)
     {
         Vector4 &position = rend_primitive_.vertexs[i].position;
         position = position * model_view;
-        Vector4 &normal = rend_primitive_.vertexs[i].position;
-        normal = normal * model_view;
+        Vector3 &normal = rend_primitive_.vertexs[i].normal;
+        normal = normal * normal_trans;
     }
 }
 
-//void Renderer::Lighting(void)
-//{
-//    Material &mat = *rend_primitive_.material;
-//
-//    if (light_type_ == kNoLight)
-//    {
-//        return;
-//    }
-//    else if (light_type_ == kFlat)
-//    {
-//
-//    }
-//    else if (light_type_ == kGouraud)
-//    {
-//        for (int i = 0; i < rend_primitive_.size; ++i)
-//        {
-//            Vector3 L = rend_primitive_.position[i].GetVector3() - light_->position;
-//            float dist = L.Magnitude();
-//            L.Normalize();
-//            Vector3 N = rend_primitive_.normals[i].GetVector3();
-//            float cos_ang = L * N;
-//            if (cos_ang < 0)
-//            {
-//                continue;
-//            }
-//            // 光强
-//            float I = 1 / (light_->attenuation0 + light_->attenuation1 * dist + light_->attenuation2 * dist * dist);
-//            // 环境光
-//            Vector4 ambColor = light_->ambient * mat.ambient * I;
-//            // 漫反射
-//            float angle = N * L;
-//            angle = max_t(angle, 0);
-//            Vector4 difColor = light_->diffuse * mat.diffuse * angle * I;
-//            Vector4 speColor = light_->specular * mat.specular * powf(angle, mat.specular.w) * I;
-//            rend_primitive_.colors[i] = ambColor + difColor + speColor;
-//        }
-//    }
-//}
+void Renderer::Lighting(void)
+{
+    Material &mat = *rend_primitive_.material;
+
+    if (shading_mode_ == kFrame || shading_mode_ == kNoLightingEffect)
+    {
+        return;
+    }
+    else if (shading_mode_ == kFlat)
+    {
+        return;
+    }
+    else if (shading_mode_ == kGouraud)
+    {
+        assert(light_);
+        if (!light_) 
+            return;
+        for (int i = 0; i < rend_primitive_.size; ++i)
+        {
+            // 光线方向，由物体指向光源
+            Vector3 L = light_->position - rend_primitive_.vertexs[i].position.GetVector3();
+            float dist = L.Magnitude();
+            L.Normalize();
+
+            Vector3 N = rend_primitive_.vertexs[i].normal;
+            // 光强，按点光源计算
+            float I = 1.0f / (light_->attenuation0 + light_->attenuation1 * dist + light_->attenuation2 * dist * dist);
+            // 环境光
+            Vector4 amb_color = light_->ambient * mat.ambient * I;
+            // 漫反射
+            float angle =  DotProduct(L, N);
+            angle = max_t(angle, 0.0f);
+            Vector4 diff_color = light_->diffuse * mat.diffuse * angle * I;
+            Vector4 spec_color = light_->specular * mat.specular * powf(angle, mat.specular.w) * I;
+            rend_primitive_.vertexs[i].color = amb_color + diff_color + spec_color;
+        }
+    }
+    else if (kPhong)
+    {
+        return;
+    }
+}
 
 // rend_primitive [N/R*x, N/T*y, F(z-N)/(F-N), z] / z
 // 做完透视裁减，将图像变换至cvv
@@ -434,6 +439,7 @@ void Renderer::Projection(const Matrix44 &perspective)
             Vector4 &position = triangles_[i].v[j].position;
 //            position = position * tran_pos;
             position = position * perspective;
+            position.Display();
         }
     }
 }
@@ -446,7 +452,7 @@ static void clip_near_plane(const RendVertex &a, const RendVertex &b, RendVertex
     float k = (FLT_EPSILON - a.position.z) / (b.position.z - a.position.z);
     Vector4 pos = lerp(a.position, b.position, k);
     assert(pos.z > 0);
-    Vector4 nor = lerp(a.normal, b.normal, k);
+    Vector3 nor = lerp(a.normal, b.normal, k);
     Vector4 col = lerp(a.color, b.color, k);
     Vector2 uv = lerp(a.uv, b.uv, k);
 
@@ -616,19 +622,17 @@ static void viewport_transform(int width, int height, Triangle *tri)
     }
 }
 
-void Renderer::Rasterization()
+void Renderer::Rasterization(void)
 {
     for (int i = 0; i < triangles_.size(); ++i)
     {
         viewport_transform(width_, height_, &triangles_[i]);
-        char text_buf[100];
 
-        if (flat_)
+        if (shading_mode_ == kNoLightingEffect || shading_mode_ == kGouraud)
         {
-
             DiffTriangle(&triangles_[i]);
         }
-        else
+        else if (shading_mode_ == kFrame)
         {
             RendVertex v0 = triangles_[i].v[0];
             RendVertex v1 = triangles_[i].v[1];
@@ -1023,10 +1027,25 @@ void Renderer::DisplayStatus(void)
     int line = 0;
     static const int x = width_ - 150;
     static const int line_gap = 20;
-    if (flat_)
-        DrawScreenText(x, line_gap * ++line, "填充");
-    else
+
+    switch(shading_mode_)
+    {
+    case kFrame:
         DrawScreenText(x, line_gap * ++line, "线框");
+        break;
+    case kNoLightingEffect:
+        DrawScreenText(x, line_gap * ++line, "填充");
+        break;
+    case kFlat:
+        DrawScreenText(x, line_gap * ++line, "Flat");
+        break;
+    case kGouraud:
+        DrawScreenText(x, line_gap * ++line, "Gouraud");
+        break;
+    case kPhong:
+        DrawScreenText(x, line_gap * ++line, "Phong");
+        break;
+    }
 
     if (diff_perspective)
         DrawScreenText(x, line_gap * ++line, "透视矫正");
@@ -1052,23 +1071,9 @@ void Renderer::DisplayStatus(void)
     }
 }
 
-/*
-void Renderer::SetLight(Light *light)
+void Renderer::set_light(Light *light)
 {
     light_ = light;
 }
 
-void Renderer::Lighting(void)
-{
-    for (int i = 0; i < rend_primitive_.size; ++i)
-    {
-        Vector4 &vertex = rend_primitive_.position[i];
 
-    }
-}
-
-void Renderer::SetLightingMode(LightingType t)
-{
-    light_type_ = t;
-}
-*/

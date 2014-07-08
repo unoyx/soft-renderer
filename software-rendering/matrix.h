@@ -8,6 +8,10 @@
 #pragma warning(push)
 // 禁用关于匿名结构的警告
 #pragma warning(disable:4201)
+
+class Matrix33;
+class Matrix44;
+
 class Matrix33
 {
 private:
@@ -112,11 +116,41 @@ public:
         return res;
     }
 
-    void Transpose(void)
+    void SetTranspose(void)
     {
         swap(m10, m01);
         swap(m20, m02);
         swap(m21, m12);
+    }
+
+    void SetInverse(void)
+    {
+        Matrix33 a;
+        a.m00 = m11 * m22 - m12 * m21;
+        a.m01 = -(m10 * m22 - m12 * m20);
+        a.m02 = m10 * m21 - m11 * m20;
+
+        a.m10 = -(m01 * m22 - m02 * m21);
+        a.m11 = m00 * m22 - m02 * m20;
+        a.m12 = -(m00 * m21 - m01 * m20);
+
+        a.m20 = m01 * m12 - m02 * m11;
+        a.m21 = -(m00 * m12 - m02 * m10);
+        a.m22 = m00 * m11 - m01 * m10;
+
+        float det = Det();
+        (*this) = a * (1.0f / det);
+    }
+
+    float Det(void)
+    {
+        float det = m00 * m11 * m22 
+                  + m01 * m12 * m20
+                  + m10 * m21 * m02
+                  - m02 * m11 * m20
+                  - m01 * m10 * m22
+                  - m12 * m21 * m00;
+        return det;
     }
 
     void Clear(void)
@@ -302,6 +336,14 @@ public:
         m20 = m.m20; m21 = m.m21; m22 = m.m22;
     }
 
+    Matrix33 GetMatrix33(void) const
+    {
+        Matrix33 m(m00, m01, m02,
+                   m10, m11, m12,
+                   m20, m21, m22);
+        return m;
+    }
+
     void SetZero(void)
     {
         memset(m, 0, sizeof(m));
@@ -381,8 +423,6 @@ public:
 
         SetTranslation(from.x, from.y, from.z);
     }
-
-
 };
 
 Vector3 operator*(const Vector3 &v, const Matrix44 &m);

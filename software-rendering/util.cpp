@@ -21,6 +21,10 @@ void get_primitive(PrimitiveType t, Primitive *pri)
         primitive.positions[1] = Vector3(0.25, 0, 0);
         primitive.positions[2] = Vector3(-0.25, 0, 0);
 
+        primitive.normals[0] = Vector3(0, 1, 0);
+        primitive.normals[1] = Vector3(0, 1, 0);
+        primitive.normals[2] = Vector3(0, 1, 0);
+
         primitive.uvs[0] = Vector2(0, 0);
         primitive.uvs[1] = Vector2(0, 1);
         primitive.uvs[2] = Vector2(1, 0);
@@ -34,13 +38,45 @@ void get_primitive(PrimitiveType t, Primitive *pri)
         primitive.colors[1] = Vector4(1, 1, 1, 1);
         primitive.colors[2] = Vector4(1, 1, 1, 1);
 
-        primitive.positions[0] = Vector3(0, 0.01f, -1);
+        primitive.positions[0] = Vector3(0, 0, -1);
         primitive.positions[1] = Vector3(0.25, 0, 0);
         primitive.positions[2] = Vector3(-0.25, 0, 0);
+
+        primitive.normals[0] = Vector3(0, -1, 0);
+        primitive.normals[1] = Vector3(0, -1, 0);
+        primitive.normals[2] = Vector3(0, -1, 0);
 
         primitive.uvs[0] = Vector2(0, 0);
         primitive.uvs[1] = Vector2(0, 1);
         primitive.uvs[2] = Vector2(1, 0);
+
+        *pri = std::move(primitive);
+    }
+    else if (t == kSquare)
+    {
+        Primitive primitive(6, nullptr, nullptr);
+        
+        for (int i = 0; i < 6; ++i)
+        {
+            primitive.colors[i] = Vector4(1, 1, 1, 1);
+            primitive.normals[i] = Vector3(0, 0, -1);
+        }
+
+        primitive.positions[0] = Vector3(-0.5, 0.5, 0);
+        primitive.positions[1] = Vector3(0.5, 0.5, 0);
+        primitive.positions[2] = Vector3(0.5, -0.5, 0);
+
+        primitive.positions[3] = Vector3(-0.5, 0.5, 0);
+        primitive.positions[4] = Vector3(0.5, -0.5, 0);
+        primitive.positions[5] = Vector3(-0.5, -0.5, 0);
+
+        primitive.uvs[0] = Vector2(0, 0);
+        primitive.uvs[1] = Vector2(1, 0);
+        primitive.uvs[2] = Vector2(1, 1);
+
+        primitive.uvs[3] = Vector2(0, 0);
+        primitive.uvs[4] = Vector2(1, 1);
+        primitive.uvs[5] = Vector2(0, 1);
 
         *pri = std::move(primitive);
     }

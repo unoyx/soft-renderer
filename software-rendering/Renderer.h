@@ -37,7 +37,7 @@ public:
     void Uninitialize(void);
 
     Texture2D CreateTexture2D(void);
-    void SetTexture(Texture2D *texture)
+    void set_texture(Texture2D *texture)
     {
         if (texture_ && texture_->IsLocked())
         {
@@ -120,7 +120,7 @@ public:
     void SetCamera(Camera *camera);
 
     // TODO …Ë÷√π‚‘¥
-    void SetLight(Light *light);
+    void set_light(Light *light);
 
     void SetLightingMode(ShadingMode t);
 
@@ -153,6 +153,11 @@ public:
         tri_ %= 3;
     }
 
+    void set_shading_mode(ShadingMode mode)
+    {
+        shading_mode_ = mode;
+    }
+
     void DisplayVertex(void);
     void DisplayTriangle(void);
     void DisplayStatus(void);
@@ -180,7 +185,7 @@ private:
     IDirect3DSurface9 *d3d_backbuffer_;
 
     bool backface_culling_;
-    ShadingMode shading_;
+    ShadingMode shading_mode_;
 
     int width_;
     int height_;

@@ -23,8 +23,9 @@ enum PrimitiveType
 {
     kTriangleOut = 0,
     kTriangleIn = 1,
-    kPyramid = 2,
-    kPrimitiveSize = 3
+    kSquare = 2,
+    kPyramid = 3,
+    kPrimitiveSize = 4
 };
 
 class Primitive;

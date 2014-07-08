@@ -22,6 +22,7 @@
 #include "Camera.h"
 #include "Primitive.h"
 #include "Texture2D.h"
+#include "Light.h"
 
 //
 // DemoApp class declaration
@@ -54,6 +55,7 @@ private:
     InputManager input_mgr_;
     Renderer renderer_;
     Camera camera_;
+    Light light_;
     Primitive primitive_;
     Texture2D texture_;
 };

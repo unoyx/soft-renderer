@@ -74,12 +74,17 @@ HWND App::Initialize(HINSTANCE inst, int width, int height)
     float aspect = static_cast<float>(width) / static_cast<float> (height);
     camera_.set_aspect(aspect);
 
+    light_.set_position(0, 1.0, 0.0);
+    light_.set_ambient(0.2f, 0.2f, 0.2f);
+    light_.set_diffuse(0.5f, 0.0f, 0.0f);
+    renderer_.set_light(&light_);
+
     texture_ = renderer_.CreateTexture2D();
     bool ret = texture_.Load("D:\\src\\msvc\\software-rendering\\Debug\\tex2.jpg");
     assert(ret);
     ret = texture_.Lock();
     assert(ret);
-    renderer_.SetTexture(&texture_);
+    renderer_.set_texture(&texture_);
 
     return wnd_;
 }
@@ -173,11 +178,12 @@ void App::Update(void)
         bf_culling = !bf_culling;
     }
     
-    static bool bf_flat = true;
-    if (input_mgr_.KeyPressed(DIK_F))
+    static int shading = 0;
+    if (input_mgr_.KeyPressed(DIK_L))
     {
-        renderer_.SetFlat(bf_flat);
-        bf_flat = !bf_flat;
+        shading += 1;
+        shading %= 4;
+        renderer_.set_shading_mode(static_cast<ShadingMode>(shading));
     }
 
     if (input_mgr_.KeyPressed(DIK_MINUS))
@@ -228,7 +234,7 @@ void App::Update(void)
     renderer_.DrawPrimitive(&primitive);
 
     renderer_.DisplayStatus();
-    renderer_.DisplayTriangle();
+//    renderer_.DisplayTriangle();
 
     //for (int i = 0; i < width_; ++i)
     //{

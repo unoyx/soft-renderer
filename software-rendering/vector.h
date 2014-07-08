@@ -210,37 +210,37 @@ public:
         return *this;
     }
 
-    Vector3 operator+(const Vector3& v) const
+    Vector3 operator+(const Vector3 &v) const
     {
         return Vector3(x + v.x, y + v.y, z + v.z);
     }
 
-    Vector3 operator+(const Vector3& v) 
+    Vector3 operator+(const Vector3 &v) 
     {
         return Vector3(x + v.x, y + v.y, z + v.z);
     }
 
-    Vector3 operator-(const Vector3& v) const
+    Vector3 operator-(const Vector3 &v) const
     {
         return Vector3(x - v.x, y - v.y, z - v.z);
     }
 
-    Vector3 operator-(const Vector3& v) 
+    Vector3 operator-(const Vector3 &v) 
     {
         return Vector3(x - v.x, y - v.y, z - v.z);
     }
 
-    Vector3 operator*(const Vector3& v) const
+    Vector3 operator*(const Vector3 &v) const
     {
         return Vector3(x * v.x, y * v.y, z * v.z);
     }
 
-    Vector3 operator*(const Vector3& v)
+    Vector3 operator*(const Vector3 &v)
     {
         return Vector3(x * v.x, y * v.y, z * v.z);
     }
     
-    Vector3 CrossProduct(const Vector3& v) const
+    Vector3 CrossProduct(const Vector3 &v) const
     {
         return Vector3(y * v.z - z * v.y,
                        z * v.x - x * v.z,
@@ -284,9 +284,14 @@ public:
 #endif
 };
 
-inline Vector3 operator*(float s, const Vector3& v)
+inline Vector3 operator*(float s, const Vector3 &v)
 {
     return Vector3(s * v.x, s * v.y, s * v.z);
+}
+
+inline float DotProduct(const Vector3 &lhs, const Vector3 &rhs)
+{
+    return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
 }
 
 class Vector4

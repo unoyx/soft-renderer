@@ -111,7 +111,7 @@ class RendVertex
 {
 public:
     Vector4 position;
-    Vector4 normal;
+    Vector3 normal;
     Vector4 color;
     Vector2 uv;
 };
