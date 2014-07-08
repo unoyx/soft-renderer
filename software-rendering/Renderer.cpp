@@ -88,7 +88,7 @@ void Renderer::Initialize(HWND hwnd, int width, int height)
 
     LOGFONT lfont;
     memset(&lfont, 0, sizeof(lfont));
-    lfont.lfHeight = 12;
+    lfont.lfHeight = 14;
     lfont.lfWeight = 0;
     lfont.lfClipPrecision = CLIP_LH_ANGLES;
     lfont.lfQuality = NONANTIALIASED_QUALITY;
@@ -130,8 +130,6 @@ void Renderer::SetCamera(Camera *camera)
 // 返回false时该线段完全在裁减区域之外
 static bool clip_line_2d(int min_x, int max_x, int min_y, int max_y, RendVertex &v0, RendVertex &v1)
 {
-//    Logger::GtLogInfo("clip before v0: %8.3f %f8.3\n", v0.position.x, v0.position.y);
-//    Logger::GtLogInfo("clip before v1: %8.3f %f8.3\n", v1.position.x, v1.position.y);
     static const int BUF_SIZE = 4;
     float x0 = v0.position.x;
     float y0 = v0.position.y;
@@ -202,8 +200,6 @@ static bool clip_line_2d(int min_x, int max_x, int min_y, int max_y, RendVertex 
             v1.position = s.position + u2 * (e.position - s.position);
             v1.color = e.color + u2 * (e.color - s.color);
         }
-//        Logger::GtLogInfo("clip after v0: %8.3f %f8.3\n", v0.position.x, v0.position.y);
-//        Logger::GtLogInfo("clip after v1: %8.3f %f8.3\n", v1.position.x, v1.position.y);
         return true;
     }
 }
@@ -364,9 +360,11 @@ void Renderer::DrawPrimitive(Primitive *primitive)
     float z_far = camera_->get_far();
     float z_near = camera_->get_near();
     // Lighting();
-    Clipping(z_near, z_far);
     Matrix44 perspective = camera_->GetPerpectivMatrix();
     Projection(perspective);
+
+    Clipping(z_near, z_far);
+
 }
 
 // rend_primitive 相机空间
@@ -425,13 +423,14 @@ void Renderer::ModelViewTransform(const Matrix44 &model_view)
 // 做完透视裁减，将图像变换至cvv
 void Renderer::Projection(const Matrix44 &perspective)
 {
-    //for (int i = 0; i < rend_primitive_.size; ++i)
-    //{
-    //    Vector4 &position = rend_primitive_.vertexs[i].position;
-    //    position = position * perspective;
-    //}
     Matrix44 tran_pos = Matrix44::CreateIdentity();
     tran_pos.SetTranslation(0, 0, 0.5);
+//    for (int i = 0; i < rend_primitive_.size; ++i)
+//    {
+//        Vector4 &position = rend_primitive_.vertexs[i].position;
+//        position = position * tran_pos;
+//        position = position * perspective;
+//    }
     for (int i = 0; i < triangles_.size(); ++i)
     {
         for (int j = 0; j < 3; ++j)
@@ -992,29 +991,71 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
 
 void Renderer::DisplayVertex(void)
 {
-    //for (int i = 0; i < triangles_.size(); ++i)
-    //{
-
-    //}
-    //for (int j = 0; j < 3; ++j)
-    //{
-    //    memset(text_buf, 0, sizeof(text_buf));
-    //    sprintf(text_buf, "x %8.3f y %8.3f z %8.3f w %8.3f", triangles_[i].v[j].position.x,
-    //        triangles_[i].v[j].position.y,
-    //        triangles_[i].v[j].position.z,
-    //        triangles_[i].v[j].position.w);
-    //    DrawScreenText(Point(10, 20 * (j + 1) * (i + 1)), text_buf);
-    //}
+    static const int BUF_SIZE = 512;
+    char text_buf[BUF_SIZE] = {0};
+    for (int i = 0; i < rend_primitive_.size; ++i)
+    {
+        memset(text_buf, 0, sizeof(text_buf));
+        sprintf(text_buf, "x:%8.3f y:%8.3f z:%8.3f w:%8.3f",
+                rend_primitive_.vertexs[i].position.x,
+                rend_primitive_.vertexs[i].position.y,
+                rend_primitive_.vertexs[i].position.z,
+                rend_primitive_.vertexs[i].position.w);
+        DrawScreenText(10, 15 * (i + 1), text_buf);
+    }
 }
 
 void Renderer::DisplayTriangle(void)
 {
-
+    static const int BUF_SIZE = 512;
+    char text_buf[BUF_SIZE] = {0};
+    for (int i = 0; i < triangles_.size(); ++i)
+    {
+        for (int j = 0; j < 3; ++j)
+        {
+            memset(text_buf, 0, sizeof(text_buf));
+            sprintf(text_buf, "x:%8.3f y:%8.3f z:%8.3f w:%8.3f",
+                    triangles_[i].v[j].position.x,
+                    triangles_[i].v[j].position.y,
+                    triangles_[i].v[j].position.z,
+                    triangles_[i].v[j].position.w);
+            DrawScreenText(10, 15 * (i * 4 + (j + 1)), text_buf);
+        }
+    }
 }
 
 void Renderer::DisplayStatus(void)
 {
+    int line = 0;
+    static const int x = width_ - 150;
+    static const int line_gap = 20;
+    if (flat_)
+        DrawScreenText(x, line_gap * ++line, "填充");
+    else
+        DrawScreenText(x, line_gap * ++line, "线框");
 
+    if (diff_perspective)
+        DrawScreenText(x, line_gap * ++line, "透视矫正");
+    else
+        DrawScreenText(x, line_gap * ++line, "仿射映射");
+
+    if (backface_culling_)
+        DrawScreenText(x, line_gap * ++line, "背面剔除");
+
+    switch(tri_)
+    {
+    case 0:
+        DrawScreenText(x, line_gap * ++line, "上三角&下三角");
+        break;
+    case 1:
+        DrawScreenText(x, line_gap * ++line, "上三角");
+        break;
+    case 2:
+        DrawScreenText(x, line_gap * ++line, "下三角");
+        break;
+    default:
+        break;
+    }
 }
 
 /*

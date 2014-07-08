@@ -102,6 +102,12 @@ public:
         text_string_.push_back(text);
     }
 
+    void DrawScreenText(int x, int y, string text)
+    {
+        text_pos_.push_back(Point(x, y));
+        text_string_.push_back(text);
+    }
+
     void BeginFrame(void);
 
     void EndFrame(void);

@@ -180,8 +180,8 @@ Vector4 Texture2D::GetDataUV(float u, float v)
 
     if (filtering_ == kNoneFiltering)
     {
-        float x = u * width_;
-        float y = v * height_;
+        float x = u * (width_ - 1);
+        float y = v * (height_ - 1);
 
         return getDataVector4(static_cast<int>(x), static_cast<int>(y));
     }

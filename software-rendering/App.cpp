@@ -201,10 +201,7 @@ void App::Update(void)
     {
         p += 1;
         p %= kPrimitiveSize;
-
     } 
-
-
 
     renderer_.SetCamera(&camera_);
 
@@ -223,6 +220,9 @@ void App::Update(void)
 
     get_primitive((PrimitiveType)p, &primitive);
     renderer_.DrawPrimitive(&primitive);
+
+    renderer_.DisplayStatus();
+    renderer_.DisplayTriangle();
 
     //for (int i = 0; i < width_; ++i)
     //{
