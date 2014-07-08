@@ -30,9 +30,9 @@ void get_primitive(PrimitiveType t, Primitive *pri)
     else if (t == kTriangleIn)
     {
         Primitive primitive(3, nullptr, nullptr);
-        primitive.colors[0] = Vector4(1.0, 0, 0, 1.0);
-        primitive.colors[1] = Vector4(0, 1.0, 0, 1.0);
-        primitive.colors[2] = Vector4(0, 0, 1.0, 1.0);
+        primitive.colors[0] = Vector4(1, 1, 1, 1);
+        primitive.colors[1] = Vector4(1, 1, 1, 1);
+        primitive.colors[2] = Vector4(1, 1, 1, 1);
 
         primitive.positions[0] = Vector3(0, 0.01f, -1);
         primitive.positions[1] = Vector3(0.25, 0, 0);

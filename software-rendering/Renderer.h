@@ -62,7 +62,7 @@ public:
         buffer_[idx] = c;
     }
 
-    void Flush(void)
+    void FlushText(void)
     {
         if (text_string_.empty())
             return;
@@ -116,12 +116,6 @@ public:
 
     void SetLightingMode(LightingType t);
 
-    // TODO 变换物体坐标至视图空间 *
-    void ModelViewTransform(const Matrix44 &model_view);
-
-    // TODO 背面剔除
-    void BackfaceCulling(void);
-
     void SetBackfaceCulling(bool flag)
     {
         backface_culling_ = flag;
@@ -129,20 +123,6 @@ public:
 
     // TODO 计算光照
     void Lighting(void);
-
-    // TODO 透视投影 *
-    void Projection(const Matrix44 &perspective);
-
-    // TODO 裁剪 *
-    void Clipping(float z_far, float z_near);
-
-    // TODO 视口变换 *
-    void ViewportTransform(void);
-
-    void ScreenMapping(void);
-
-    // TODO 光栅化 *
-    void Rasterization(void);
 
     // 绘制三角形
     void DrawPrimitive(Primitive *primitive);
@@ -165,11 +145,21 @@ public:
         tri_ %= 3;
     }
 
-private:
-    void BresenhamLine(Point p0, Point p1, uint32 c);
+    void DisplayVertex(void);
+    void DisplayTriangle(void);
+    void DisplayStatus(void);
 
-    bool ClipLine3d(const Vector4 &beg, const Vector4 &end, 
-                    const Vector3 &w_min, const Vector3 &w_max, Vector4 *res);
+private:
+    // TODO 变换物体坐标至视图空间 *
+    void ModelViewTransform(const Matrix44 &model_view);
+    // TODO 透视投影 *
+    void Projection(const Matrix44 &perspective);
+
+    // TODO 裁剪 *
+    void Clipping(float z_far, float z_near);
+
+    // TODO 光栅化 *
+    void Rasterization(void);
     void DiffTriangle(Triangle *tri);
     void DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const RendVertex &v2);
     void DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, const RendVertex &v2);

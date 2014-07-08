@@ -4,7 +4,6 @@
 #include "typedef.h"
 #include "vector.h"
 
-
 static inline uint32 vector4_to_ARGB32(const Vector4 &c)
 {
     uint8 a = (uint8)round(c.a * 255);

@@ -295,6 +295,13 @@ public:
         swap(m32, m23);
     }
 
+    void SetMatrix33(const Matrix33 &m)
+    {
+        m00 = m.m00; m01 = m.m01; m02 = m.m02;
+        m10 = m.m10; m11 = m.m11; m12 = m.m12;
+        m20 = m.m20; m21 = m.m21; m22 = m.m22;
+    }
+
     void SetZero(void)
     {
         memset(m, 0, sizeof(m));

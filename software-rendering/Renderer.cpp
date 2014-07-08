@@ -319,6 +319,14 @@ void Renderer::draw_line(Point p0, Point p1, uint32 c) {
 
 void Renderer::BeginFrame(void)
 {
+
+    rend_primitive_.Clear();
+    triangles_.clear();
+    memset(z_buffer_, 0, width_ * height_ * sizeof(float));
+}
+
+void Renderer::EndFrame(void)
+{
     d3d_device_->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 0, 0);
     D3DLOCKED_RECT lockinfo;
     memset(&lockinfo, 0, sizeof(lockinfo));
@@ -331,15 +339,9 @@ void Renderer::BeginFrame(void)
     buffer_ = static_cast<uint32 *>(lockinfo.pBits);
     pitch_ = lockinfo.Pitch;
 
-    rend_primitive_.Clear();
-    triangles_.clear();
-    memset(z_buffer_, 0, width_ * height_ * sizeof(float));
-}
-
-void Renderer::EndFrame(void)
-{
+    Rasterization();
     d3d_backbuffer_->UnlockRect();
-    Flush();
+    FlushText();
     d3d_device_->Present(0, 0, 0, 0);
 }
 
@@ -365,7 +367,6 @@ void Renderer::DrawPrimitive(Primitive *primitive)
     Clipping(z_near, z_far);
     Matrix44 perspective = camera_->GetPerpectivMatrix();
     Projection(perspective);
-    Rasterization();
 }
 
 // rend_primitive 相机空间
@@ -375,6 +376,7 @@ void Renderer::ModelViewTransform(const Matrix44 &model_view)
     {
         Vector4 &position = rend_primitive_.vertexs[i].position;
         position = position * model_view;
+        position.Display();
         Vector4 &normal = rend_primitive_.vertexs[i].position;
         normal = normal * model_view;
     }
@@ -428,11 +430,14 @@ void Renderer::Projection(const Matrix44 &perspective)
     //    Vector4 &position = rend_primitive_.vertexs[i].position;
     //    position = position * perspective;
     //}
+    Matrix44 tran_pos = Matrix44::CreateIdentity();
+    tran_pos.SetTranslation(0, 0, 0.5);
     for (int i = 0; i < triangles_.size(); ++i)
     {
         for (int j = 0; j < 3; ++j)
         {
             Vector4 &position = triangles_[i].v[j].position;
+            position = position * tran_pos;
             position = position * perspective;
         }
     }
@@ -443,12 +448,12 @@ static void clip_near_plane(const RendVertex &a, const RendVertex &b, RendVertex
     assert(a.position.z <= 0);
     assert(b.position.z > 0);
 
-    float k = (b.position.z - FLT_EPSILON) / (b.position.z - a.position.z);
-    Vector4 pos = k * (a.position - b.position) + b.position;
+    float k = (FLT_EPSILON - a.position.z) / (b.position.z - a.position.z);
+    Vector4 pos = lerp(a.position, b.position, k);
     assert(pos.z > 0);
-    Vector4 nor = k * (b.normal - a.normal) + a.normal;
-    Vector4 col = k * (b.color - a.color) + a.color;
-    Vector2 uv = k * (b.uv - a.uv) + a.uv;
+    Vector4 nor = lerp(a.normal, b.normal, k);
+    Vector4 col = lerp(a.color, b.color, k);
+    Vector2 uv = lerp(a.uv, b.uv, k);
 
     o->position = pos;
     o->normal = nor;
@@ -608,7 +613,6 @@ static void viewport_transform(int width, int height, Triangle *tri)
         tri->v[j].position.y *= div;
         tri->v[j].position.z *= div;
 
-        tri->v[j].position.Display();
 //        tri->v[j].color.Display();
 
         // 将[x,y]变换至[width,height]的范围
@@ -621,19 +625,11 @@ static void viewport_transform(int width, int height, Triangle *tri)
 
 void Renderer::Rasterization()
 {
-    
     for (int i = 0; i < triangles_.size(); ++i)
     {
         viewport_transform(width_, height_, &triangles_[i]);
         char text_buf[100];
-        for (int j = 0; j < 3; ++j)
-        {
-            memset(text_buf, 0, sizeof(text_buf));
-            sprintf(text_buf, "x %8.3f y %8.3f z %8.3f", triangles_[i].v[j].position.x,
-                triangles_[i].v[j].position.y,
-                triangles_[i].v[j].position.z);
-            DrawScreenText(Point(10, 20 * (j + 1)), text_buf);
-        }
+
         if (flat_)
         {
 
@@ -723,7 +719,7 @@ void Renderer::DiffTriangle(Triangle *tri)
         if (diff_perspective)
         {
             float div = (1 - k) * (1 / tri->v[0].position.w) + k * (1 / tri->v[2].position.w);
-            m.position.w = 1.0 / div;
+            m.position.w = 1.0f / div;
             m.color = ((1 - k) * (tri->v[0].color / tri->v[0].position.w) + k * (tri->v[2].color / tri->v[2].position.w)) / div;
             m.uv = ((1 - k) * (tri->v[0].uv / tri->v[0].position.w) + k * (tri->v[2].uv / tri->v[2].position.w)) / div;
         }
@@ -762,8 +758,8 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
     float dx_left = (v2.position.x - v0.position.x) / dy;
     float dx_right = (v1.position.x - v0.position.x) / dy;
 
-    float done_over_z_left = (1.0 / v2.position.w - 1.0 / v0.position.w) / dy;
-    float done_over_z_right = (1.0 / v1.position.w - 1.0 / v0.position.w) / dy;
+    float done_over_z_left = (1.0f / v2.position.w - 1.0f / v0.position.w) / dy;
+    float done_over_z_right = (1.0f / v1.position.w - 1.0f / v0.position.w) / dy;
 
     Vector4 dc_left = (v2.color - v0.color) / dy;
     Vector4 dc_right = (v1.color - v0.color) / dy;
@@ -781,8 +777,8 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
 
     float x_begin = v0.position.x;
     float x_end = v0.position.x;
-    float one_over_z_begin = 1.0 / v0.position.w;
-    float one_over_z_end = 1.0 / v0.position.w;
+    float one_over_z_begin = 1.0f / v0.position.w;
+    float one_over_z_end = 1.0f / v0.position.w;
     Vector4 color_begin = v0.color;
     Vector4 color_end = v0.color;
     Vector2 uv_over_z_begin = uv_over_z_top;
@@ -838,19 +834,20 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
         // floor x_end
         for (; x < min_t((int)x_end, width_); ++x, one_over_z += done_over_z, c += dc, uv += duv, uv_over_z += duv_over_z)
         {
-            Vector4 cvtex(1.0, 1.0, 1.0, 1.0);
+            Vector4 cvtex(1.0f, 1.0f, 1.0f, 1.0f);
             if (texture_)
             {
-                uint32 ctex = -1;
                 if (diff_perspective)
                 {
                     Vector2 uv_ = uv_over_z / one_over_z;
-//                    uv_.u = clamp(uv_.u, 0.0f, 1.0f);
-//                    uv_.v = clamp(uv_.v, 0.0f, 1.0f);
+                    uv_.u = clamp(uv_.u, 0.0f, 1.0f);
+                    uv_.v = clamp(uv_.v, 0.0f, 1.0f);
                     cvtex = texture_->GetDataUV(uv_.u, uv_.v);
                 }
                 else
                 {
+                    uv.u = clamp(uv.u, 0.0f, 1.0f);
+                    uv.v = clamp(uv.v, 0.0f, 1.0f);
                     cvtex = texture_->GetDataUV(uv.u, uv.v);
                 }
             }
@@ -886,8 +883,8 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
     float dx_left = (v2.position.x - v0.position.x) / dy;
     float dx_right = (v2.position.x - v1.position.x) / dy;
     
-    float done_over_z_left = (1.0 / v2.position.w - 1.0 / v0.position.w) / dy;
-    float done_over_z_right = (1.0 / v2.position.w - 1.0 / v1.position.w) / dy;
+    float done_over_z_left = (1.0f / v2.position.w - 1.0f / v0.position.w) / dy;
+    float done_over_z_right = (1.0f / v2.position.w - 1.0f / v1.position.w) / dy;
 
     Vector4 dc_left = (v2.color - v0.color) / dy;
     Vector4 dc_right = (v2.color - v1.color) / dy;
@@ -905,8 +902,8 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
 
     float x_begin = v0.position.x;
     float x_end = v1.position.x;
-    float one_over_z_begin = 1.0 / v0.position.w;
-    float one_over_z_end = 1.0 / v1.position.w;
+    float one_over_z_begin = 1.0f / v0.position.w;
+    float one_over_z_end = 1.0f / v1.position.w;
     Vector4 color_begin = v0.color;
     Vector4 color_end = v1.color;
     Vector2 uv_over_z_begin = uv_over_z_left;
@@ -960,18 +957,20 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
         }
         for (; x < min_t((int)x_end, width_); ++x, one_over_z += done_over_z, c += dc, uv_over_z += duv_over_z, uv += duv)
         {
-            Vector4 cvtex(1.0, 1.0, 1.0, 1.0);
+            Vector4 cvtex(1.0f, 1.0f, 1.0f, 1.0f);
             if (texture_)
             {
                 if (diff_perspective)
                 {
                     Vector2 uv_ = uv_over_z / one_over_z;
-//                    uv_.u = clamp(uv_.u, 0.0f, 1.0f);
-//                    uv_.v = clamp(uv_.v, 0.0f, 1.0f);
+                    uv_.u = clamp(uv_.u, 0.0f, 1.0f);
+                    uv_.v = clamp(uv_.v, 0.0f, 1.0f);
                     cvtex = texture_->GetDataUV(uv_.u, uv_.v);
                 }
                 else
                 {
+                    uv.u = clamp(uv.u, 0.0f, 1.0f);
+                    uv.v = clamp(uv.u, 0.0f, 1.0f);
                     cvtex = texture_->GetDataUV(uv.u, uv.v);
                 }
             }
@@ -991,7 +990,32 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
     }
 }
 
+void Renderer::DisplayVertex(void)
+{
+    //for (int i = 0; i < triangles_.size(); ++i)
+    //{
 
+    //}
+    //for (int j = 0; j < 3; ++j)
+    //{
+    //    memset(text_buf, 0, sizeof(text_buf));
+    //    sprintf(text_buf, "x %8.3f y %8.3f z %8.3f w %8.3f", triangles_[i].v[j].position.x,
+    //        triangles_[i].v[j].position.y,
+    //        triangles_[i].v[j].position.z,
+    //        triangles_[i].v[j].position.w);
+    //    DrawScreenText(Point(10, 20 * (j + 1) * (i + 1)), text_buf);
+    //}
+}
+
+void Renderer::DisplayTriangle(void)
+{
+
+}
+
+void Renderer::DisplayStatus(void)
+{
+
+}
 
 /*
 void Renderer::SetLight(Light *light)

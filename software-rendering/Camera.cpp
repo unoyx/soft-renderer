@@ -28,7 +28,8 @@ Matrix44 Camera::GetPerpectivMatrix(void)
 Matrix44 Camera::GetModelViewMatrix(void)
 {
     Matrix33 rotate = ori_.GetMatrix33();
-    Matrix44 m(rotate);
+    Matrix44 m = Matrix44::CreateIdentity();
+    m.SetMatrix33(rotate);
     m.SetTranslation(-pos_.x, -pos_.y, -pos_.z);
     return m;
 }

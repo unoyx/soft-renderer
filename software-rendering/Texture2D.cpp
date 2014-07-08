@@ -112,7 +112,7 @@ bool Texture2D::Lock(void)
         Logger::GtLogError("lock texture failed");
         return false;
     }
-    pitch_ = rect.Pitch;
+    pitch_ = rect.Pitch / 4;
     data_ = static_cast<uint32 *>(rect.pBits);
     is_locked_ = true;
     return true;
@@ -150,7 +150,7 @@ uint32 Texture2D::GetData(int x, int y)
         return 0;
     }
     
-    uint32 c = data_[y * (pitch_ / 4) + x];
+    uint32 c = data_[y * pitch_ + x];
     if (format_ == D3DFMT_A8R8G8B8)
     {
         return c;
@@ -178,68 +178,42 @@ Vector4 Texture2D::GetDataUV(float u, float v)
         return Vector4();
     }
 
-    float x = u * width_;
-    float y = v * height_;
     if (filtering_ == kNoneFiltering)
     {
+        float x = u * width_;
+        float y = v * height_;
+
         return getDataVector4(static_cast<int>(x), static_cast<int>(y));
     }
     else if (filtering_ == kBilinterFiltering)
     {
+        float x = u * (width_ - 2);
+        float y = v * (height_ - 2);
         int x_ = static_cast<int>(x);
         int y_ = static_cast<int>(y);
         float x_off = x - x_;
         float y_off = y - y_;
 
-        if (x_ == width_)
-        {
-            if (y_ == height_)
-            {
-                return getDataVector4(x_, y_);
-            }
-            else
-            {
-                // lerp y
-                Vector4 d00 = getDataVector4(x_, y_);
-                Vector4 d10 = getDataVector4(x_, y_ + 1);
-                d00 = lerp(d00, d10, y_off);
-                return d00;
-            }
-        }
-        else
-        {
-            if (y == height_)
-            {
-                Vector4 d00 = getDataVector4(x_, y_);
-                Vector4 d01 = getDataVector4(x_ + 1, y_);
-                d00 = lerp(d00, d01, x_off);
-                return d00;
-            }
-            else
-            {
-                Vector4 d00 = getDataVector4(x_, y_);
-                Vector4 d01 = getDataVector4(x_ + 1, y_);
-
-                d00 = lerp(d00, d01, x_off);
-
-                Vector4 d10 = getDataVector4(x_, y_ + 1);
-                Vector4 d11 = getDataVector4(x_ + 1, y_ + 1);
-
-                d10 = lerp(d10, d11, x_off);
-
-                return lerp(d00, d10, y_off);
-            }
-
-        }
-
+        Vector4 d00 = getDataVector4(x_, y_);
+        Vector4 d01 = getDataVector4(x_ + 1, y_);
+        
+        d00 = lerp(d00, d01, x_off);
+        
+        Vector4 d10 = getDataVector4(x_, y_ + 1);
+        Vector4 d11 = getDataVector4(x_ + 1, y_ + 1);
+        
+        d10 = lerp(d10, d11, x_off);
+        
+        return lerp(d00, d10, y_off);
     }
+        
     assert(0);
     return Vector4();
 }
 
 Vector4 Texture2D::getDataVector4(int x, int y)
 {
-    int idx = static_cast<int>(y) * pitch_ / 4 + static_cast<int>(x);
+    int idx = static_cast<int>(y) * pitch_ + static_cast<int>(x);
     uint32 d = data_[idx];
     if (format_ == D3DFMT_A8R8G8B8)
     {
