@@ -20,7 +20,7 @@ Renderer::Renderer(void)
     ,z_buffer_(nullptr)
     ,light_(nullptr)
     ,flat_(false)
-    ,light_type_(kNoLight)
+    ,shading_(kFrame)
     ,camera_(nullptr)
     ,text_color_(RGB(255, 0, 0))
     ,texture_(nullptr)
@@ -315,7 +315,6 @@ void Renderer::draw_line(Point p0, Point p1, uint32 c) {
 
 void Renderer::BeginFrame(void)
 {
-
     rend_primitive_.Clear();
     triangles_.clear();
     memset(z_buffer_, 0, width_ * height_ * sizeof(float));
@@ -334,7 +333,6 @@ void Renderer::EndFrame(void)
     }
     buffer_ = static_cast<uint32 *>(lockinfo.pBits);
     pitch_ = lockinfo.Pitch;
-
     Rasterization();
     d3d_backbuffer_->UnlockRect();
     FlushText();
@@ -364,7 +362,6 @@ void Renderer::DrawPrimitive(Primitive *primitive)
     Projection(perspective);
 
     Clipping(z_near, z_far);
-
 }
 
 // rend_primitive Ïà»ú¿Õ¼ä
@@ -374,7 +371,6 @@ void Renderer::ModelViewTransform(const Matrix44 &model_view)
     {
         Vector4 &position = rend_primitive_.vertexs[i].position;
         position = position * model_view;
-        position.Display();
         Vector4 &normal = rend_primitive_.vertexs[i].position;
         normal = normal * model_view;
     }
@@ -436,7 +432,7 @@ void Renderer::Projection(const Matrix44 &perspective)
         for (int j = 0; j < 3; ++j)
         {
             Vector4 &position = triangles_[i].v[j].position;
-            position = position * tran_pos;
+//            position = position * tran_pos;
             position = position * perspective;
         }
     }
@@ -485,8 +481,6 @@ void Renderer::Clipping(float z_far, float z_near)
         for (int j = 0; j < TRIANGLE_SIZE; ++j)
         {
             Vector4 &p0 = rend_primitive_.vertexs[i + j].position;
-            Logger::GtLog("Clip vertex:");
-            p0.Display();
 
             if (p0.x < z_near)
                 vertex_culling_flag[j] |= OVER_LEFT;

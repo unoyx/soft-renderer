@@ -17,11 +17,13 @@ enum MatrixType
     kPerspective = 1
 };
 
-enum LightingType
+enum ShadingMode
 {
-    kNoLight = 0,
-    kFlat = 1,
-    kGouraud = 2
+    kFrame = 0,
+    kNoLightingEffect = 1,
+    kFlat = 2,
+    kGouraud = 3,
+    kPhong = 4
 };
 
 class Texture2D;
@@ -120,7 +122,7 @@ public:
     // TODO …Ë÷√π‚‘¥
     void SetLight(Light *light);
 
-    void SetLightingMode(LightingType t);
+    void SetLightingMode(ShadingMode t);
 
     void SetBackfaceCulling(bool flag)
     {
@@ -178,7 +180,7 @@ private:
     IDirect3DSurface9 *d3d_backbuffer_;
 
     bool backface_culling_;
-    LightingType light_type_;
+    ShadingMode shading_;
 
     int width_;
     int height_;

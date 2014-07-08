@@ -9,10 +9,6 @@
 #define _WIN32_WINNT 0x0700 // Change this to the appropriate value to target other versions of Windows.
 #endif
 
-//#ifndef UNICODE
-//#define UNICODE
-//#endif
-
 // C RunTime Header Files:
 #include <stdlib.h>
 #include <malloc.h>

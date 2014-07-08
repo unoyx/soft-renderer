@@ -109,11 +109,12 @@ void App::Run()
         else
         {
             Update();
-            while (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
-            {
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
-            }
+            // TODO why?
+            //while (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
+            //{
+            //    TranslateMessage(&msg);
+            //    DispatchMessage(&msg);
+            //}
         }
     }
 }
@@ -126,6 +127,11 @@ void App::Update(void)
     elapsed_tick = current_tick;
 
     input_mgr_.Update();
+
+    if (input_mgr_.KeyPressed(DIK_ESCAPE))
+    {
+        PostQuitMessage(0);
+    }
     
     const float move_dist = 0.5f * diff_tick / 100.0f;
     if (input_mgr_.KeyDown(DIK_D))
