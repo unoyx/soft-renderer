@@ -149,8 +149,8 @@ public:
 
     void SwitchTriUpDown(void)
     {
-        tri_ += 1;
-        tri_ %= 3;
+        tri_up_down_ += 1;
+        tri_up_down_ %= 3;
     }
 
     void set_shading_mode(ShadingMode mode)
@@ -163,6 +163,16 @@ public:
     void DisplayStatus(void);
 
 private:
+    void SetZbuffer(int x, int y, float v)
+    {
+        z_buffer_[y * width_ + x] = v;
+    }
+
+    float GetZbuffer(int x, int y)
+    {
+        return z_buffer_[y * width_ + x];
+    }
+
     // TODO 变换物体坐标至视图空间 *
     void ModelViewTransform(const Matrix44 &model_view);
     // TODO 透视投影 *
@@ -198,6 +208,8 @@ private:
     
     Camera *camera_;
     Light *light_;
+    Vector3 light_pos_;
+
     RendPrimitive rend_primitive_;
     std::vector<Triangle> triangles_;
 
@@ -208,6 +220,6 @@ private:
     Texture2D *texture_;
     bool flat_;
     bool diff_perspective;
-    int tri_;
+    int tri_up_down_;
 };
 

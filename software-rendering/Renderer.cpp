@@ -25,7 +25,7 @@ Renderer::Renderer(void)
     ,text_color_(RGB(255, 0, 0))
     ,texture_(nullptr)
     ,diff_perspective(false)
-    ,tri_(0)
+    ,tri_up_down_(0)
 {
 }
 
@@ -317,7 +317,13 @@ void Renderer::BeginFrame(void)
 {
     rend_primitive_.Clear();
     triangles_.clear();
-    memset(z_buffer_, 0, width_ * height_ * sizeof(float));
+    for (int i = 0; i < width_; ++i)
+    {
+        for (int j = 0; j < height_; ++j)
+        {
+            z_buffer_[j * width_ + i] = 1.0f;
+        }
+    }
 }
 
 void Renderer::EndFrame(void)
@@ -368,13 +374,116 @@ void Renderer::ModelViewTransform(const Matrix44 &model_view)
     Matrix33 normal_trans = model_view.GetMatrix33();
     normal_trans.SetInverse();
     normal_trans.SetTranspose();
+
+    // 转换灯光位置
+    if (light_)
+    {
+        Vector4 pl;
+        pl.SetVector3(light_->position);
+        pl.w = 1.0f;
+        pl = pl * model_view;
+        light_pos_ = pl.GetVector3();
+    }
+
+#if 0
+    for (int i = 0; i < rend_primitive_.size; ++i)
+    {
+        if (((i + 1) % 3) == 0)
+        {
+            Vector3 p0 = rend_primitive_.vertexs[i - 2].position.GetVector3();
+            Vector3 p1 = rend_primitive_.vertexs[i - 1].position.GetVector3();
+            Vector3 p2 = rend_primitive_.vertexs[i].position.GetVector3();
+
+            Vector3 e0 = p0 - p1;
+            Vector3 e1 = p1 - p2;
+
+            Vector3 n = rend_primitive_.vertexs[i-1].normal;
+            float dot = DotProduct(e0, n);
+//            Logger::GtLogInfo("before:0\t%f", dot);
+            assert(equalf(dot, 0, 0.001));
+            dot = DotProduct(e1, n);
+//            Logger::GtLogInfo("before:1\t%f", dot);
+            assert(equalf(dot, 0, 0.001));
+        }
+    }
+#endif
+
     for (int i = 0; i < rend_primitive_.size; ++i)
     {
         Vector4 &position = rend_primitive_.vertexs[i].position;
         position = position * model_view;
         Vector3 &normal = rend_primitive_.vertexs[i].normal;
         normal = normal * normal_trans;
+        normal.SetNormalize();
     }
+
+#if 0
+    for (int i = 0; i < rend_primitive_.size; ++i)
+    {
+        if (((i + 1) % 3) == 0)
+        {
+            Vector4 p0 = rend_primitive_.vertexs[i - 2].position;
+            Vector4 p1 = rend_primitive_.vertexs[i - 1].position;
+            Vector4 p2 = rend_primitive_.vertexs[i].position;
+
+            Vector3 e0 = (p0 - p1).GetVector3();
+            Vector3 e1 = (p1 - p2).GetVector3();
+
+            Vector3 N = CrossProduct(e0, e1);
+            N.SetNormalize();
+
+            float dot = DotProduct(N, e0);
+            Logger::GtLogInfo("dot e0 \t%f", dot);
+            dot = DotProduct(N, e1);
+            Logger::GtLogInfo("dot e1 \t%f", dot);
+
+            Vector3 n0 = rend_primitive_.vertexs[i - 2].normal;
+            Vector3 n1 = rend_primitive_.vertexs[i - 1].normal;
+            Vector3 n2 = rend_primitive_.vertexs[i].normal;
+            Vector3 zero = CrossProduct(N, n1);
+            zero.Display();
+
+            dot = DotProduct(e0, n0);
+            Logger::GtLogInfo("after:0\t%f", dot);
+            dot = DotProduct(e1, n0);
+            Logger::GtLogInfo("after:1\t%f", dot);
+        }
+    }
+#endif
+}
+
+Vector4 shading(const Vector3 &pos, const Vector3 &normal, const Material &mat, const Light &light)
+{
+    // 光线方向，由物体指向光源
+    Vector3 L = light.position - pos;
+    // 光源距离
+    float dist = L.Magnitude();
+    L.SetNormalize();
+    // 光强，按点光源计算
+    float I = 1.0f / (light.attenuation0 + light.attenuation1 * dist + light.attenuation2 * dist * dist);
+    Logger::GtLogInfo("intensity %f", I);
+    // 环境光
+    Vector4 amb_color = light.ambient * mat.ambient * I;
+    amb_color = clamp(amb_color, 0.0f, 1.0f);
+    // 顶点法线
+    float light_angle = DotProduct(L, normal);
+    light_angle = max_t(light_angle, 0.0f);
+    // 漫反射
+    Vector4 diff_color = light.diffuse * mat.diffuse * light_angle * I;
+    diff_color = clamp(diff_color, 0.0f, 1.0f);
+    // 观察方向（相机空间）
+    Vector3 V = -pos;
+    V.SetNormalize();
+    // 半角向量
+    Vector3 H = L + V;
+    H.SetNormalize();
+    // 镜面反射
+    float view_angle = DotProduct(H, normal);
+    view_angle = max_t(view_angle, 0.0f);
+    Vector4 spec_color = light.specular * mat.specular * powf(view_angle, mat.specular.w) * I;
+    spec_color = clamp(spec_color, 0.0f, 1.0f);
+    Vector4 ret = amb_color + diff_color + spec_color;    
+    return ret;
 }
 
 void Renderer::Lighting(void)
@@ -387,7 +496,32 @@ void Renderer::Lighting(void)
     }
     else if (shading_mode_ == kFlat)
     {
-        return;
+        assert(light_);
+        if (!light_) 
+            return;
+        for (int i = 2; i < rend_primitive_.size; i += 3)
+        {
+            // 假设为三角形
+            if ((i + 1) % 3 != 0)
+                continue;
+
+            Vector3 p0 = rend_primitive_.vertexs[i - 2].position.GetVector3();
+            Vector3 p1 = rend_primitive_.vertexs[i - 1].position.GetVector3();
+            Vector3 p2 = rend_primitive_.vertexs[i].position.GetVector3();
+
+            Vector3 pos = (p0 + p1 + p2) * (1 / 3);
+
+            Vector3 e0 = p1 - p0;
+            Vector3 e1 = p2 - p1;
+
+            Vector3 normal = CrossProduct(e0, e1);
+            normal.SetNormalize();
+
+            Vector4 color = shading(pos, normal, *rend_primitive_.material, *light_);
+            rend_primitive_.vertexs[i - 2].color = color;
+            rend_primitive_.vertexs[i - 1].color = color;
+            rend_primitive_.vertexs[i].color = color;
+        }
     }
     else if (shading_mode_ == kGouraud)
     {
@@ -396,22 +530,11 @@ void Renderer::Lighting(void)
             return;
         for (int i = 0; i < rend_primitive_.size; ++i)
         {
-            // 光线方向，由物体指向光源
-            Vector3 L = light_->position - rend_primitive_.vertexs[i].position.GetVector3();
-            float dist = L.Magnitude();
-            L.Normalize();
-
-            Vector3 N = rend_primitive_.vertexs[i].normal;
-            // 光强，按点光源计算
-            float I = 1.0f / (light_->attenuation0 + light_->attenuation1 * dist + light_->attenuation2 * dist * dist);
-            // 环境光
-            Vector4 amb_color = light_->ambient * mat.ambient * I;
-            // 漫反射
-            float angle =  DotProduct(L, N);
-            angle = max_t(angle, 0.0f);
-            Vector4 diff_color = light_->diffuse * mat.diffuse * angle * I;
-            Vector4 spec_color = light_->specular * mat.specular * powf(angle, mat.specular.w) * I;
-            rend_primitive_.vertexs[i].color = amb_color + diff_color + spec_color;
+            // 顶点位置
+            const Vector3 pos = rend_primitive_.vertexs[i].position.GetVector3();
+            const Vector3 &normal = rend_primitive_.vertexs[i].normal;
+            Vector4 color = shading(pos, normal, *rend_primitive_.material, *light_);
+            rend_primitive_.vertexs[i].color = color;
         }
     }
     else if (kPhong)
@@ -439,7 +562,6 @@ void Renderer::Projection(const Matrix44 &perspective)
             Vector4 &position = triangles_[i].v[j].position;
 //            position = position * tran_pos;
             position = position * perspective;
-            position.Display();
         }
     }
 }
@@ -628,7 +750,7 @@ void Renderer::Rasterization(void)
     {
         viewport_transform(width_, height_, &triangles_[i]);
 
-        if (shading_mode_ == kNoLightingEffect || shading_mode_ == kGouraud)
+        if (shading_mode_ == kNoLightingEffect || shading_mode_ == kGouraud || shading_mode_ == kFlat)
         {
             DiffTriangle(&triangles_[i]);
         }
@@ -690,7 +812,7 @@ void Renderer::DiffTriangle(Triangle *tri)
     {
         if (p0.x > p1.x)
             swap(v0, v1);
-        if (tri_ == 0 || tri_ == 2) DiffTriangleDown(v0, v1, v2);
+        if (tri_up_down_ == 0 || tri_up_down_ == 2) DiffTriangleDown(v0, v1, v2);
     }
     // 平底三角形
     /*              v0
@@ -705,7 +827,7 @@ void Renderer::DiffTriangle(Triangle *tri)
     {
         if (p2.x > p1.x)
             swap(v1, v2);
-        if (tri_ == 0 || tri_ == 1) DiffTriangleUp(v0, v1, v2);
+        if (tri_up_down_ == 0 || tri_up_down_ == 1) DiffTriangleUp(v0, v1, v2);
     }
     else
     {
@@ -730,14 +852,14 @@ void Renderer::DiffTriangle(Triangle *tri)
         // 朝左的三角形
         if (p1.x < m.position.x)
         {
-            if (tri_ == 0 || tri_ == 1) DiffTriangleUp(v0, m, v1);
-            if (tri_ == 0 || tri_ == 2) DiffTriangleDown(v1, m, v2);
+            if (tri_up_down_ == 0 || tri_up_down_ == 1) DiffTriangleUp(v0, m, v1);
+            if (tri_up_down_ == 0 || tri_up_down_ == 2) DiffTriangleDown(v1, m, v2);
         }
         // 朝右的三角形
         else
         {
-            if (tri_ == 0 || tri_ == 1) DiffTriangleUp(v0, v1, m);
-            if (tri_ == 0 || tri_ == 2) DiffTriangleDown(m, v1, v2);
+            if (tri_up_down_ == 0 || tri_up_down_ == 1) DiffTriangleUp(v0, v1, m);
+            if (tri_up_down_ == 0 || tri_up_down_ == 2) DiffTriangleDown(m, v1, v2);
         }
     }
 }
@@ -831,6 +953,11 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
         // floor x_end
         for (; x < min_t((int)x_end, width_); ++x, one_over_z += done_over_z, c += dc, uv += duv, uv_over_z += duv_over_z)
         {
+            float z = (1.0f / one_over_z);
+            float prev_z = GetZbuffer(x, y);
+            if (z > prev_z)
+                continue;
+            SetZbuffer(x, y, z);
             Vector4 cvtex(1.0f, 1.0f, 1.0f, 1.0f);
             if (texture_)
             {
@@ -848,7 +975,7 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
                     cvtex = texture_->GetDataUV(uv.u, uv.v);
                 }
             }
-            uint32 cl = vector4_to_ARGB32(c * cvtex);
+            uint32 cl = vector4_to_ARGB32(clamp(c * cvtex, 0.0f, 1.0f));
             DrawPixel(x, y, cl);
         }
         x_begin += dx_left;
@@ -954,6 +1081,11 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
         }
         for (; x < min_t((int)x_end, width_); ++x, one_over_z += done_over_z, c += dc, uv_over_z += duv_over_z, uv += duv)
         {
+            float z = (1.0f / one_over_z);
+            float prev_z = GetZbuffer(x, y);
+            if (z > prev_z)
+                continue;
+            SetZbuffer(x, y, z);
             Vector4 cvtex(1.0f, 1.0f, 1.0f, 1.0f);
             if (texture_)
             {
@@ -971,7 +1103,7 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
                     cvtex = texture_->GetDataUV(uv.u, uv.v);
                 }
             }
-            uint32 cl = vector4_to_ARGB32(c * cvtex);
+            uint32 cl = vector4_to_ARGB32(clamp(c * cvtex, 0.0f, 1.0f));
             DrawPixel(x, y, cl);
         }
         x_begin += dx_left;
@@ -1055,7 +1187,7 @@ void Renderer::DisplayStatus(void)
     if (backface_culling_)
         DrawScreenText(x, line_gap * ++line, "背面剔除");
 
-    switch(tri_)
+    switch(tri_up_down_)
     {
     case 0:
         DrawScreenText(x, line_gap * ++line, "上三角&下三角");

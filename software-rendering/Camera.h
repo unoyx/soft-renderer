@@ -29,6 +29,11 @@ public:
         pos_ = pos;
     }
 
+    Vector3 get_pos(void)
+    {
+        return pos_;
+    }
+
     void set_ori(const Quat &ori)
     {
         ori_ = ori;

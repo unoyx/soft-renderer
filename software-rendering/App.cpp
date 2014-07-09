@@ -74,9 +74,14 @@ HWND App::Initialize(HINSTANCE inst, int width, int height)
     float aspect = static_cast<float>(width) / static_cast<float> (height);
     camera_.set_aspect(aspect);
 
-    light_.set_position(0, 1.0, 0.0);
-    light_.set_ambient(0.2f, 0.2f, 0.2f);
-    light_.set_diffuse(0.5f, 0.0f, 0.0f);
+    light_.set_position(0, 0, -1);
+    light_.set_ambient(0.8f, 0.8f, 0.8f);
+    light_.set_diffuse(0.3f, 0.5f, 0.3f);
+    light_.set_specular(0.3, 0.3, 0.3);
+   
+    light_.attenuation0 = 0.50;
+    light_.attenuation1 = 0.01;
+    light_.attenuation2 = 0.5;
     renderer_.set_light(&light_);
 
     texture_ = renderer_.CreateTexture2D();
@@ -231,8 +236,14 @@ void App::Update(void)
 
 
     get_primitive((PrimitiveType)p, &primitive);
-    renderer_.DrawPrimitive(&primitive);
+    Material mat;
+    mat.power = 1.0f;
+    mat.ambient = Vector4(0.5, 0.25, 0.25, 0.25);
+    mat.diffuse = Vector4(0.5, 0.25, 0.25, 0.25);
+    primitive.material = &mat;
 
+    renderer_.DrawPrimitive(&primitive);
+    
     renderer_.DisplayStatus();
 //    renderer_.DisplayTriangle();
 

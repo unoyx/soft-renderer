@@ -8,7 +8,7 @@ Vector3 operator*(const Vector3 &v, const Matrix33 &m)
     {
         for (int k = 0; k < ELE_SIZE; ++k)
         {
-            ret.m[i] += v.m[i] * m.e[i][k];
+            ret.m[i] += v.m[k] * m.e[k][i];
         }
     }
     return ret;

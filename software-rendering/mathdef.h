@@ -32,8 +32,8 @@ static inline uint32 ARGB32(uint8 a, uint8 r, uint8 g, uint8 b)
 
 static inline Vector4 clamp(const Vector4 &v, const float min, const float max)
 {
-    clamp(v.x, min, max);
-    clamp(v.y, min, max);
-    clamp(v.z, min, max);
-    clamp(v.w, min, max);
+    return Vector4(clamp(v.x, min, max),
+                   clamp(v.y, min, max),
+                   clamp(v.z, min, max),
+                   clamp(v.w, min, max));
 }

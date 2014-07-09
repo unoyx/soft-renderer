@@ -1,4 +1,5 @@
 #pragma once
+#include <assert.h>
 #include "typedef.h"
 #include "vector.h"
 #ifdef _DEBUG
@@ -127,18 +128,19 @@ public:
     {
         Matrix33 a;
         a.m00 = m11 * m22 - m12 * m21;
-        a.m01 = -(m10 * m22 - m12 * m20);
-        a.m02 = m10 * m21 - m11 * m20;
+        a.m01 = -(m01 * m22 - m02 * m21);
+        a.m02 = m01 * m12 - m02 * m11;
 
-        a.m10 = -(m01 * m22 - m02 * m21);
+        a.m10 = -(m10 * m22 - m12 * m20);
         a.m11 = m00 * m22 - m02 * m20;
-        a.m12 = -(m00 * m21 - m01 * m20);
+        a.m12 = -(m00 * m12 - m02 * m10);
 
-        a.m20 = m01 * m12 - m02 * m11;
-        a.m21 = -(m00 * m12 - m02 * m10);
+        a.m20 = m10 * m21 - m11 * m20;
+        a.m21 = -(m00 * m21 - m01 * m20);
         a.m22 = m00 * m11 - m01 * m10;
 
         float det = Det();
+        assert(det != 0);
         (*this) = a * (1.0f / det);
     }
 
@@ -413,9 +415,9 @@ public:
         Vector3 v = up;
         Vector3 u = v.CrossProduct(n);
         v = n.CrossProduct(u);
-        n.Normalize();
-        u.Normalize();
-        v.Normalize();
+        n.SetNormalize();
+        u.SetNormalize();
+        v.SetNormalize();
 
         m00 = u.x; m10 = u.y; m20 = u.z;
         m01 = v.x; m11 = v.y; m21 = v.z;

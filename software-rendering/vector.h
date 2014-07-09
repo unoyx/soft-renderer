@@ -258,7 +258,7 @@ public:
         return Vector3(x / d, y / d, z / d);
     }
 
-    void Normalize(void)
+    void SetNormalize(void)
     {
         float mag_sq = x * x + y * y + z * z;
         if (mag_sq > 0)
@@ -291,7 +291,7 @@ inline Vector3 operator*(float s, const Vector3 &v)
 
 inline float DotProduct(const Vector3 &lhs, const Vector3 &rhs)
 {
-    return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+    return (lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z);
 }
 
 class Vector4
