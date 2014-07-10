@@ -183,7 +183,7 @@ Vector4 Texture2D::GetDataUV(float u, float v)
         float x = u * (width_ - 1);
         float y = v * (height_ - 1);
 
-        return getDataVector4(static_cast<int>(x), static_cast<int>(y));
+        return GetDataVector4(static_cast<int>(x), static_cast<int>(y));
     }
     else if (filtering_ == kBilinterFiltering)
     {
@@ -194,13 +194,13 @@ Vector4 Texture2D::GetDataUV(float u, float v)
         float x_off = x - x_;
         float y_off = y - y_;
 
-        Vector4 d00 = getDataVector4(x_, y_);
-        Vector4 d01 = getDataVector4(x_ + 1, y_);
+        Vector4 d00 = GetDataVector4(x_, y_);
+        Vector4 d01 = GetDataVector4(x_ + 1, y_);
         
         d00 = lerp(d00, d01, x_off);
         
-        Vector4 d10 = getDataVector4(x_, y_ + 1);
-        Vector4 d11 = getDataVector4(x_ + 1, y_ + 1);
+        Vector4 d10 = GetDataVector4(x_, y_ + 1);
+        Vector4 d11 = GetDataVector4(x_ + 1, y_ + 1);
         
         d10 = lerp(d10, d11, x_off);
         
@@ -211,7 +211,7 @@ Vector4 Texture2D::GetDataUV(float u, float v)
     return Vector4();
 }
 
-Vector4 Texture2D::getDataVector4(int x, int y)
+Vector4 Texture2D::GetDataVector4(int x, int y)
 {
     int idx = static_cast<int>(y) * pitch_ + static_cast<int>(x);
     uint32 d = data_[idx];

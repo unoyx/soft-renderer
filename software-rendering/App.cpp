@@ -75,17 +75,27 @@ HWND App::Initialize(HINSTANCE inst, int width, int height)
     camera_.set_aspect(aspect);
 
     light_.set_position(0, 0, -1);
-    light_.set_ambient(0.8f, 0.8f, 0.8f);
-    light_.set_diffuse(0.3f, 0.5f, 0.3f);
-    light_.set_specular(0.3, 0.3, 0.3);
+    light_.set_ambient(0.2f, 0.2f, 0.2f);
+    light_.set_diffuse(0.7f, 0.7f, 0.7f);
+    light_.set_specular(0.7f, 0.7f, 0.7f);
    
-    light_.attenuation0 = 0.50;
-    light_.attenuation1 = 0.01;
-    light_.attenuation2 = 0.5;
+    light_.attenuation0 = 0.2f;
+    light_.attenuation1 = 0.01f;
+    light_.attenuation2 = 0.02f;
     renderer_.set_light(&light_);
 
     texture_ = renderer_.CreateTexture2D();
     bool ret = texture_.Load("D:\\src\\msvc\\software-rendering\\Debug\\tex2.jpg");
+    if (!ret)
+    {
+        int len = GetCurrentDirectory(0, nullptr);
+        char *buf = new char[len];
+        GetCurrentDirectory(len, buf);
+        string path(buf);
+        delete[] buf;
+        path += ".\\tex2.jpg";
+        ret = texture_.Load(path.c_str());
+    }
     assert(ret);
     ret = texture_.Lock();
     assert(ret);
@@ -136,6 +146,23 @@ void App::Update(void)
     int diff_tick = current_tick - elapsed_tick;
     elapsed_tick = current_tick;
 
+    static float prev_frame = 0;
+    static float frame = 0;
+    static int tick_count = 0;
+
+    frame += 1;
+    tick_count += diff_tick;
+    if (tick_count > 1000)
+    {
+        frame = (frame * 1000) / tick_count;
+        prev_frame = (prev_frame + frame) / 2.0f;
+        frame = 0;
+        tick_count = 0;
+    }
+    char buf[20] = {0};
+    sprintf(buf, "Ö¡ÂÊ %8.2f", prev_frame);
+    renderer_.DrawScreenText(5, 5, buf);
+
     input_mgr_.Update();
 
     if (input_mgr_.KeyPressed(DIK_ESCAPE))
@@ -179,7 +206,7 @@ void App::Update(void)
 
     if (input_mgr_.KeyPressed(DIK_B))
     {
-        renderer_.SetBackfaceCulling(bf_culling);
+        renderer_.set_backface_culling(bf_culling);
         bf_culling = !bf_culling;
     }
     
@@ -187,18 +214,18 @@ void App::Update(void)
     if (input_mgr_.KeyPressed(DIK_L))
     {
         shading += 1;
-        shading %= 4;
+        shading %= kShadingModeCount;
         renderer_.set_shading_mode(static_cast<ShadingMode>(shading));
     }
 
     if (input_mgr_.KeyPressed(DIK_MINUS))
     {
-        renderer_.SwitchDiffPerspective();
+        renderer_.switch_diff_perspective();
     }
 
     if (input_mgr_.KeyPressed(DIK_EQUALS))
     {
-        renderer_.SwitchTriUpDown();
+        renderer_.switch_tri_up_down();
     }
 
     static int filt = kNoneFiltering;
@@ -220,7 +247,7 @@ void App::Update(void)
         p %= kPrimitiveSize;
     } 
 
-    renderer_.SetCamera(&camera_);
+    renderer_.set_camera(&camera_);
 
     //int w = texture_.get_width();
     //int h = texture_.get_height();
@@ -238,8 +265,9 @@ void App::Update(void)
     get_primitive((PrimitiveType)p, &primitive);
     Material mat;
     mat.power = 1.0f;
-    mat.ambient = Vector4(0.5, 0.25, 0.25, 0.25);
-    mat.diffuse = Vector4(0.5, 0.25, 0.25, 0.25);
+    mat.ambient = Vector4(0.3, 0.3, 0.3, 1);
+    mat.diffuse = Vector4(0.6, 0.8, 0.6, 1);
+    mat.specular = Vector4(0.6, 0.8, 0.6, 1);
     primitive.material = &mat;
 
     renderer_.DrawPrimitive(&primitive);
@@ -269,10 +297,7 @@ LRESULT CALLBACK App::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
     {
         LPCREATESTRUCT pcs = (LPCREATESTRUCT)lParam;
         App *pDemoApp = (App *)pcs->lpCreateParams;
-
-        ::SetWindowLongPtrW(hwnd,
-                            GWLP_USERDATA,
-                            PtrToUlong(pDemoApp));
+        ::SetWindowLongPtrW(hwnd, GWLP_USERDATA, PtrToUlong(pDemoApp));
     }
     else
     {

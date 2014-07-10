@@ -17,7 +17,7 @@ Renderer::Renderer(void)
     ,pitch_(0)
     ,buffer_(nullptr)
     ,backface_culling_(false)
-    ,z_buffer_(nullptr)
+    ,one_over_z_buffer_(nullptr)
     ,light_(nullptr)
     ,flat_(false)
     ,shading_mode_(kFrame)
@@ -26,6 +26,7 @@ Renderer::Renderer(void)
     ,texture_(nullptr)
     ,diff_perspective(false)
     ,tri_up_down_(0)
+    ,bumpmap_(nullptr)
 {
 }
 
@@ -84,7 +85,7 @@ void Renderer::Initialize(HWND hwnd, int width, int height)
         return;
     }
 
-    z_buffer_ = new float[width_ * height_];
+    one_over_z_buffer_ = new float[width_ * height_];
 
     LOGFONT lfont;
     memset(&lfont, 0, sizeof(lfont));
@@ -99,10 +100,10 @@ void Renderer::Initialize(HWND hwnd, int width, int height)
 
 void Renderer::Uninitialize(void)
 {
-    if (z_buffer_)
+    if (one_over_z_buffer_)
     {
-        delete[] z_buffer_;
-        z_buffer_ = nullptr;
+        delete[] one_over_z_buffer_;
+        one_over_z_buffer_ = nullptr;
     }
 
     DeleteObject(font_);
@@ -120,11 +121,6 @@ Texture2D Renderer::CreateTexture2D(void)
     }
     Texture2D tex(d3d_device_);
     return tex;
-}
-
-void Renderer::SetCamera(Camera *camera)
-{
-    camera_ = camera;
 }
 
 // 返回false时该线段完全在裁减区域之外
@@ -243,7 +239,7 @@ void Renderer::DrawLine(RendVertex v0, RendVertex v1)
     int y = (int)y_start;
     Vector4 color = color_start;
 
-    DrawPixel(x, y, vector4_to_ARGB32(color));
+    set_pixel(x, y, vector4_to_ARGB32(color));
     for (int k = 1; k < step; ++k)
     {
         x_count += dx;
@@ -262,55 +258,8 @@ void Renderer::DrawLine(RendVertex v0, RendVertex v1)
             if (!is_step_x)
                 color += dc;
         }
-        DrawPixel(x, y, vector4_to_ARGB32(color));
+        set_pixel(x, y, vector4_to_ARGB32(color));
     }
-}
-
-
-void Renderer::draw_line(Point p0, Point p1, uint32 c) {
-	// 参数 c 为颜色值
-	int dx = abs(p1.x - p0.x),
-		dy = abs(p1.y - p0.y),
-		yy = 0;
-
-	if (dx < dy) {
-		yy = 1;
-		swap(p0.x, p0.y);
-		swap(p1.x, p1.y);
-		swap(dx, dy);
-	}
-
-	int ix = (p1.x - p0.x) > 0 ? 1 : -1,
-		 iy = (p1.y - p0.y) > 0 ? 1 : -1,
-		 cx = p0.x,
-		 cy = p0.y,
-		 n2dy = dy * 2,
-		 n2dydx = (dy - dx) * 2,
-		 d = dy * 2 - dx;
-
-	if (yy) { // 如果直线与 x 轴的夹角大于 45 度
-		while (cx != p1.x) {
-			if (d < 0) {
-				d += n2dy;
-			} else {
-				cy += iy;
-				d += n2dydx;
-			}
-			DrawPixel(cy, cx, c);
-			cx += ix;
-		}
-	} else { // 如果直线与 x 轴的夹角小于 45 度
-		while (cx != p1.x) {
-			if (d < 0) {
-				d += n2dy;
-			} else {
-				cy += iy;
-				d += n2dydx;
-			}
-			DrawPixel(cx, cy, c);
-			cx += ix;
-		}
-	}
 }
 
 void Renderer::BeginFrame(void)
@@ -321,7 +270,7 @@ void Renderer::BeginFrame(void)
     {
         for (int j = 0; j < height_; ++j)
         {
-            z_buffer_[j * width_ + i] = 1.0f;
+            one_over_z_buffer_[j * width_ + i] = 0.0f;
         }
     }
 }
@@ -347,7 +296,7 @@ void Renderer::EndFrame(void)
 
 void Renderer::DrawPrimitive(Primitive *primitive)
 {
-    rend_primitive_ = RendPrimitive(primitive->size, primitive->material);
+    rend_primitive_ = RendPrimitive(primitive->size);
 
     for (int i = 0; i < rend_primitive_.size; ++i)
     {
@@ -357,6 +306,8 @@ void Renderer::DrawPrimitive(Primitive *primitive)
         rend_primitive_.vertexs[i].uv = primitive->uvs[i];
         rend_primitive_.vertexs[i].color = primitive->colors[i];
     }
+
+    mat_ = primitive->material;
 
     Matrix44 model_view = camera_->GetModelViewMatrix();
     ModelViewTransform(model_view);
@@ -452,7 +403,7 @@ void Renderer::ModelViewTransform(const Matrix44 &model_view)
 #endif
 }
 
-Vector4 shading(const Vector3 &pos, const Vector3 &normal, const Material &mat, const Light &light)
+Vector4 Shading(const Vector3 &pos, const Vector3 &normal, const Material &mat, const Light &light)
 {
     // 光线方向，由物体指向光源
     Vector3 L = light.position - pos;
@@ -461,12 +412,13 @@ Vector4 shading(const Vector3 &pos, const Vector3 &normal, const Material &mat, 
     L.SetNormalize();
     // 光强，按点光源计算
     float I = 1.0f / (light.attenuation0 + light.attenuation1 * dist + light.attenuation2 * dist * dist);
-    Logger::GtLogInfo("intensity %f", I);
     // 环境光
     Vector4 amb_color = light.ambient * mat.ambient * I;
     amb_color = clamp(amb_color, 0.0f, 1.0f);
+    Vector3 N = normal;
+    N.SetNormalize();
     // 顶点法线
-    float light_angle = DotProduct(L, normal);
+    float light_angle = DotProduct(L, N);
     light_angle = max_t(light_angle, 0.0f);
     // 漫反射
     Vector4 diff_color = light.diffuse * mat.diffuse * light_angle * I;
@@ -478,7 +430,7 @@ Vector4 shading(const Vector3 &pos, const Vector3 &normal, const Material &mat, 
     Vector3 H = L + V;
     H.SetNormalize();
     // 镜面反射
-    float view_angle = DotProduct(H, normal);
+    float view_angle = DotProduct(H, N);
     view_angle = max_t(view_angle, 0.0f);
     Vector4 spec_color = light.specular * mat.specular * powf(view_angle, mat.specular.w) * I;
     spec_color = clamp(spec_color, 0.0f, 1.0f);
@@ -488,8 +440,6 @@ Vector4 shading(const Vector3 &pos, const Vector3 &normal, const Material &mat, 
 
 void Renderer::Lighting(void)
 {
-    Material &mat = *rend_primitive_.material;
-
     if (shading_mode_ == kFrame || shading_mode_ == kNoLightingEffect)
     {
         return;
@@ -509,7 +459,7 @@ void Renderer::Lighting(void)
             Vector3 p1 = rend_primitive_.vertexs[i - 1].position.GetVector3();
             Vector3 p2 = rend_primitive_.vertexs[i].position.GetVector3();
 
-            Vector3 pos = (p0 + p1 + p2) * (1 / 3);
+            Vector3 pos = (p0 + p1 + p2) * (1.0f / 3.0f);
 
             Vector3 e0 = p1 - p0;
             Vector3 e1 = p2 - p1;
@@ -517,7 +467,7 @@ void Renderer::Lighting(void)
             Vector3 normal = CrossProduct(e0, e1);
             normal.SetNormalize();
 
-            Vector4 color = shading(pos, normal, *rend_primitive_.material, *light_);
+            Vector4 color = Shading(pos, normal, *mat_, *light_);
             rend_primitive_.vertexs[i - 2].color = color;
             rend_primitive_.vertexs[i - 1].color = color;
             rend_primitive_.vertexs[i].color = color;
@@ -533,12 +483,17 @@ void Renderer::Lighting(void)
             // 顶点位置
             const Vector3 pos = rend_primitive_.vertexs[i].position.GetVector3();
             const Vector3 &normal = rend_primitive_.vertexs[i].normal;
-            Vector4 color = shading(pos, normal, *rend_primitive_.material, *light_);
+            Vector4 color = Shading(pos, normal, *mat_, *light_);
             rend_primitive_.vertexs[i].color = color;
         }
     }
     else if (kPhong)
     {
+        for (int i = 0; i < rend_primitive_.size; ++i)
+        {
+            // 记录物体原来的位置
+            rend_primitive_.vertexs[i].global_pos = rend_primitive_.vertexs[i].position.GetVector3();
+        }
         return;
     }
 }
@@ -750,7 +705,10 @@ void Renderer::Rasterization(void)
     {
         viewport_transform(width_, height_, &triangles_[i]);
 
-        if (shading_mode_ == kNoLightingEffect || shading_mode_ == kGouraud || shading_mode_ == kFlat)
+        if (shading_mode_ == kNoLightingEffect 
+            || shading_mode_ == kFlat 
+            || shading_mode_ == kGouraud 
+            || shading_mode_ == kPhong)
         {
             DiffTriangle(&triangles_[i]);
         }
@@ -863,6 +821,7 @@ void Renderer::DiffTriangle(Triangle *tri)
         }
     }
 }
+
     /*              v0
                     /\
                    /  \
@@ -890,10 +849,19 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
 
     Vector2 duv_over_z_left = (uv_over_z_left - uv_over_z_top) / dy;
     Vector2 duv_over_z_right = (uv_over_z_right - uv_over_z_top) / dy;
-
+    
+    // 仿射映射差值uv
     Vector2 duv_left = (v2.uv - v0.uv) / dy;
     Vector2 duv_right = (v1.uv - v0.uv) / dy;
 
+    // 对法线差值
+    Vector3 dnormal_left = (v2.normal - v0.normal) / dy;
+    Vector3 dnormal_right = (v1.normal - v0.normal) / dy;
+
+    // 对物体原来位置做差值
+    Vector3 dpos_left = (v2.global_pos - v0.global_pos) / dy;
+    Vector3 dpos_right = (v1.global_pos - v0.global_pos) / dy;
+    
     float x_begin = v0.position.x;
     float x_end = v0.position.x;
     float one_over_z_begin = 1.0f / v0.position.w;
@@ -904,6 +872,10 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
     Vector2 uv_over_z_end = uv_over_z_top;
     Vector2 uv_begin = v0.uv;
     Vector2 uv_end = v0.uv;
+    Vector3 normal_begin = v0.normal;
+    Vector3 normal_end = v0.normal;
+    Vector3 pos_begin = v0.global_pos;
+    Vector3 pos_end = v0.global_pos;
 
     int y = (int)v0.position.y;
     if (y < 0)
@@ -919,15 +891,19 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
         uv_over_z_end += duv_over_z_right * d;
         uv_begin += duv_left * d;
         uv_end += duv_right * d;
+        normal_begin += dnormal_left * d;
+        normal_end += dnormal_right * d;
+        pos_begin += dpos_left * d;
+        pos_end += dpos_right * d;
         y = 0;
     }
     
-    int tex_w = 0;
-    int tex_h = 0;
-    if (texture_)
+    int bumpmap_width = 0;
+    int bumpmap_height = 0;
+    if (bumpmap_)
     {
-        tex_w = texture_->get_width() - 1;
-        tex_h = texture_->get_height() - 1;
+        bumpmap_width = bumpmap_->get_width();
+        bumpmap_height = bumpmap_->get_height();
     }
 
     // floor v1.position.y
@@ -942,41 +918,65 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
         Vector2 uv_over_z = uv_over_z_begin;
         Vector2 duv = (uv_begin - uv_end) / (x_begin - x_end);
         Vector2 uv = uv_begin;
+        Vector3 dnormal = (normal_begin - normal_end) / (x_begin - x_end);
+        Vector3 normal = normal_begin;
+        Vector3 dpos = (pos_begin - pos_end) / (x_begin - x_end);
+        Vector3 pos = pos_begin;
         if (x_begin < 0)
         {
             one_over_z += done_over_z * (-x_begin);
             c += dc * (-x_begin);
             uv_over_z += duv_over_z * (-x_begin);
             uv += duv * (-x_begin);
+            normal += dnormal * (-x_begin);
+            pos += dpos * (-x_begin);
             x = 0;
         }
+
         // floor x_end
-        for (; x < min_t((int)x_end, width_); ++x, one_over_z += done_over_z, c += dc, uv += duv, uv_over_z += duv_over_z)
+        for (; x < min_t((int)x_end, width_); ++x,
+                                              one_over_z += done_over_z,
+                                              c += dc,
+                                              uv += duv,
+                                              uv_over_z += duv_over_z,
+                                              normal += dnormal,
+                                              pos += dpos)
         {
-            float z = (1.0f / one_over_z);
-            float prev_z = GetZbuffer(x, y);
-            if (z > prev_z)
+            // 1/z buffer 
+            float prev_one_over_z = get_one_over_z_buffer(x, y);
+            if (one_over_z < prev_one_over_z)
                 continue;
-            SetZbuffer(x, y, z);
+            set_one_over_z_buffer(x, y, one_over_z);
+
+            if (shading_mode_ == kPhong)
+            {
+                if (bumpmap_)
+                {
+                    int x = uv.x * (width_ - 3) + 1;
+                    int y = uv.y * (height_ - 3) + 1;
+                    int off_x = bumpmap_->GetData(x + 1, y) - bumpmap_->GetData(x - 1, y);
+                    int off_y = bumpmap_->GetData(x, y + 1) - bumpmap_->GetData(y, y - 1);
+                    normal.x += off_x;
+                    normal.y += off_y;
+                }
+                // Phong着色时，c每次重新计算
+                c = Shading(pos, normal, *mat_, *light_);
+            }
+
             Vector4 cvtex(1.0f, 1.0f, 1.0f, 1.0f);
             if (texture_)
             {
+                Vector2 uv_ = uv;
                 if (diff_perspective)
                 {
-                    Vector2 uv_ = uv_over_z / one_over_z;
-                    uv_.u = clamp(uv_.u, 0.0f, 1.0f);
-                    uv_.v = clamp(uv_.v, 0.0f, 1.0f);
-                    cvtex = texture_->GetDataUV(uv_.u, uv_.v);
+                    uv_ = uv_over_z / one_over_z;
                 }
-                else
-                {
-                    uv.u = clamp(uv.u, 0.0f, 1.0f);
-                    uv.v = clamp(uv.v, 0.0f, 1.0f);
-                    cvtex = texture_->GetDataUV(uv.u, uv.v);
-                }
+                uv_.u = clamp(uv_.u, 0.0f, 1.0f);
+                uv_.v = clamp(uv_.v, 0.0f, 1.0f);
+                cvtex = texture_->GetDataUV(uv_.u, uv_.v);
             }
             uint32 cl = vector4_to_ARGB32(clamp(c * cvtex, 0.0f, 1.0f));
-            DrawPixel(x, y, cl);
+            set_pixel(x, y, cl);
         }
         x_begin += dx_left;
         x_end += dx_right;
@@ -988,6 +988,10 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
         uv_over_z_end += duv_over_z_right;
         uv_begin += duv_left;
         uv_end += duv_right;
+        normal_begin += dnormal_left;
+        normal_end += dnormal_right;
+        pos_begin += dpos_left;
+        pos_end += dpos_right;
     }
 }
 
@@ -1024,6 +1028,12 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
     Vector2 duv_left = (v2.uv - v0.uv) / dy;
     Vector2 duv_right = (v2.uv - v1.uv) / dy;
 
+    Vector3 dnormal_left = (v2.normal - v0.normal) / dy;
+    Vector3 dnormal_right = (v2.normal - v1.normal) / dy;
+
+    Vector3 dpos_left = (v2.global_pos - v0.global_pos) / dy;
+    Vector3 dpos_right = (v2.global_pos - v0.global_pos) / dy;
+
     float x_begin = v0.position.x;
     float x_end = v1.position.x;
     float one_over_z_begin = 1.0f / v0.position.w;
@@ -1034,6 +1044,10 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
     Vector2 uv_over_z_end = uv_over_z_right;
     Vector2 uv_begin = v0.uv;
     Vector2 uv_end = v1.uv;
+    Vector3 normal_begin = v0.normal;
+    Vector3 normal_end = v1.normal;
+    Vector3 pos_begin = v0.global_pos;
+    Vector3 pos_end = v1.global_pos;
 
     int y = (int)v0.position.y;
     if (y < 0)
@@ -1049,15 +1063,19 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
         uv_over_z_end += duv_over_z_right * d;
         uv_begin += duv_left * d;
         uv_end += duv_right * d;
+        normal_begin += dnormal_left * d;
+        normal_end += dnormal_right * d;
+        pos_begin += dpos_left *d;
+        pos_end += dpos_right *d;
         y = 0;
     }
 
-    int tex_w = 0;
-    int tex_h = 0;
-    if (texture_)
+    int bumpmap_width = 0;
+    int bumpmap_height = 0;
+    if (bumpmap_)
     {
-        tex_w = texture_->get_width() - 1;
-        tex_h = texture_->get_height() - 1;
+        bumpmap_width = bumpmap_->get_width();
+        bumpmap_height = bumpmap_->get_height();
     }
 
     for (; y < min_t((int)v2.position.y, height_); ++y)
@@ -1071,40 +1089,61 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
         Vector2 uv_over_z = uv_over_z_begin;
         Vector2 duv = (uv_begin - uv_end) / (x_begin - x_end);
         Vector2 uv = uv_begin;
+        Vector3 dnormal = (normal_begin - normal_end) / (x_begin - x_end);
+        Vector3 normal = normal_begin;
+        Vector3 dpos = (pos_begin - pos_end) / (x_begin - x_end);
+        Vector3 pos = pos_begin;
         if (x_begin < 0)
         {
             one_over_z += done_over_z * (-x_begin);
             c += dc * (-x_begin);
             uv_over_z += duv_over_z * (-x_begin);
             uv += duv * (-x_begin);
+            normal += dnormal * (-x_begin);
+            pos += dpos * (-x_begin);
             x = 0;
         }
-        for (; x < min_t((int)x_end, width_); ++x, one_over_z += done_over_z, c += dc, uv_over_z += duv_over_z, uv += duv)
+        for (; x < min_t((int)x_end, width_); ++x,
+                                              one_over_z += done_over_z,
+                                              c += dc,
+                                              uv_over_z += duv_over_z,
+                                              uv += duv,
+                                              normal += dnormal,
+                                              pos += dpos)
         {
-            float z = (1.0f / one_over_z);
-            float prev_z = GetZbuffer(x, y);
-            if (z > prev_z)
+            float prev_one_over_z = get_one_over_z_buffer(x, y);
+            if (one_over_z < prev_one_over_z)
                 continue;
-            SetZbuffer(x, y, z);
+            set_one_over_z_buffer(x, y, one_over_z);
+
+            if (shading_mode_ == kPhong)
+            {
+                if (bumpmap_)
+                {
+                    int x = uv.x * (width_ - 3) + 1;
+                    int y = uv.y * (height_ - 3) + 1;
+                    int off_x = bumpmap_->GetData(x + 1, y) - bumpmap_->GetData(x - 1, y);
+                    int off_y = bumpmap_->GetData(x, y + 1) - bumpmap_->GetData(y, y - 1);
+                    normal.x += off_x;
+                    normal.y += off_y;
+                }
+
+                c = Shading(pos, normal, *mat_, *light_);
+            }
             Vector4 cvtex(1.0f, 1.0f, 1.0f, 1.0f);
             if (texture_)
             {
+                Vector2 uv_ = uv;
                 if (diff_perspective)
                 {
-                    Vector2 uv_ = uv_over_z / one_over_z;
-                    uv_.u = clamp(uv_.u, 0.0f, 1.0f);
-                    uv_.v = clamp(uv_.v, 0.0f, 1.0f);
-                    cvtex = texture_->GetDataUV(uv_.u, uv_.v);
+                    uv_ = uv_over_z / one_over_z;
                 }
-                else
-                {
-                    uv.u = clamp(uv.u, 0.0f, 1.0f);
-                    uv.v = clamp(uv.u, 0.0f, 1.0f);
-                    cvtex = texture_->GetDataUV(uv.u, uv.v);
-                }
+                uv_.u = clamp(uv_.u, 0.0f, 1.0f);
+                uv_.v = clamp(uv_.v, 0.0f, 1.0f);
+                cvtex = texture_->GetDataUV(uv_.u, uv_.v);
             }
             uint32 cl = vector4_to_ARGB32(clamp(c * cvtex, 0.0f, 1.0f));
-            DrawPixel(x, y, cl);
+            set_pixel(x, y, cl);
         }
         x_begin += dx_left;
         x_end += dx_right;
@@ -1116,6 +1155,10 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
         uv_over_z_end += duv_over_z_right;
         uv_begin += duv_left;
         uv_end += duv_right;
+        normal_begin += dnormal_left;
+        normal_end += dnormal_right;
+        pos_begin += dpos_left;
+        pos_end += dpos_right;
     }
 }
 
@@ -1203,9 +1246,31 @@ void Renderer::DisplayStatus(void)
     }
 }
 
-void Renderer::set_light(Light *light)
+void Renderer::FlushText(void)
 {
-    light_ = light;
+    if (text_string_.empty())
+        return;
+
+    HDC hdc;
+    HRESULT res = d3d_backbuffer_->GetDC(&hdc);
+    if (FAILED(res))
+    {
+        Logger::GtLogError("d3d9 GetDC failed: %d", GetLastError());
+        return;
+    }
+    SelectObject(hdc, font_);
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, text_color_);
+    for (int i = 0; i < text_string_.size(); ++i)
+    {
+        RECT rect;
+        rect.left = text_pos_[i].x;
+        rect.right = text_string_[i].size() * 10 + rect.left;
+        rect.top = text_pos_[i].y;
+        rect.bottom = rect.top + 20;
+        DrawText(hdc, text_string_[i].c_str(), text_string_[i].length(), &rect, DT_LEFT);
+    }
+    text_pos_.clear();
+    text_string_.clear();
+    d3d_backbuffer_->ReleaseDC(hdc);
 }
-
-

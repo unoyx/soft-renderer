@@ -383,8 +383,8 @@ public:
         // 一般情况下 left = -right; bottom = -top; 因此可以将矩阵化简
         float top = (z_near * tanf(fov / 2.0f));
         float right = top * aspect;
-        m00 = 2 * z_near / (right * 2);
-        m11 = 2 * z_near / (top * 2);
+        m00 = z_near / right;
+        m11 = z_near / top;
         m22 = z_far / (z_far - z_near);
         m23 = 1.0f;
         m32 = (z_near * z_far) / (z_near - z_far);

@@ -116,7 +116,7 @@ public:
     }
 
 private:
-    Vector4 getDataVector4(int x, int y);
+    Vector4 GetDataVector4(int x, int y);
 private:
     Texture2D(void);
 

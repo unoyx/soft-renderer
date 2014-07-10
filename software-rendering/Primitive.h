@@ -114,6 +114,7 @@ public:
     Vector3 normal;
     Vector4 color;
     Vector2 uv;
+    Vector3 global_pos;
 };
 
 class RendPrimitive
@@ -121,13 +122,11 @@ class RendPrimitive
 public:
     RendPrimitive(void)
         :size(0)
-        ,vertexs(nullptr)
-        ,material(nullptr) {}
+        ,vertexs(nullptr) {}
 
-    RendPrimitive(int size, Material *material)
+    explicit RendPrimitive(int size)
         :size(size)
-        ,vertexs(new RendVertex[size])
-        ,material(material) {}
+        ,vertexs(new RendVertex[size]) {}
 
     ~RendPrimitive()
     {
@@ -137,11 +136,9 @@ public:
     RendPrimitive(RendPrimitive&& r)
         :size(r.size)
         ,vertexs(r.vertexs)
-        ,material(material) 
     {
         r.size = 0;
         r.vertexs = nullptr;
-        r.material = nullptr;
     }
 
     RendPrimitive& operator=(RendPrimitive&& rhs)
@@ -149,11 +146,9 @@ public:
         Clear();
         size = rhs.size;
         vertexs = rhs.vertexs;
-        material = rhs.material;
 
         rhs.size = 0;
         rhs.vertexs = nullptr;
-        rhs.material = nullptr;
         return *this;
     }
 
@@ -164,13 +159,11 @@ public:
             delete[] vertexs;
             vertexs = nullptr;
         }
-        material = nullptr;
         size = 0;
     }
 public:
     int size;
     RendVertex *vertexs;
-    Material *material;
 private:
     RendPrimitive(const RendPrimitive&);
     RendPrimitive& operator=(const RendPrimitive&);

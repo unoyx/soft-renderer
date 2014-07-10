@@ -23,7 +23,8 @@ enum ShadingMode
     kNoLightingEffect = 1,
     kFlat = 2,
     kGouraud = 3,
-    kPhong = 4
+    kPhong = 4,
+    kShadingModeCount = 5
 };
 
 class Texture2D;
@@ -50,49 +51,39 @@ public:
         }
     }
 
-    Texture2D *GetTexture(void)
+    Texture2D *get_texture(void)
     {
         return texture_;
     }
 
+    void set_bumpmap(Texture2D *bumpmap)
+    {
+        if (bumpmap_ && bumpmap_->IsLoaded())
+        {
+            bumpmap_->UnLock();
+        }
+        bumpmap_ = bumpmap;
+        if (!bumpmap_->IsLocked())
+        {
+            bumpmap_->Lock();
+        }
+    }
+
+    Texture2D *get_bumpmap(void)
+    {
+        return bumpmap_;
+    }
+
     void DrawLine(RendVertex v0, RendVertex v1);
 
-    void DrawPixel(int x, int y, uint32 c)
+    void set_pixel(int x, int y, uint32 c)
     {
         int idx = y * (pitch_ / 4) + x;
 //        Logger::GtLogInfo("idx %d", idx);
         buffer_[idx] = c;
     }
 
-    void FlushText(void)
-    {
-        if (text_string_.empty())
-            return;
 
-        HDC hdc;
-        HRESULT res = d3d_backbuffer_->GetDC(&hdc);
-        if (FAILED(res))
-        {
-            Logger::GtLogError("d3d9 GetDC failed: %d", GetLastError());
-            return;
-        }
-        SelectObject(hdc, font_);
-        SetBkMode(hdc, TRANSPARENT);
-        SetTextColor(hdc, text_color_);
-        for (int i = 0; i < text_string_.size(); ++i)
-        {
-            RECT rect;
-            rect.left = text_pos_[i].x;
-            rect.right = text_string_[i].size() * 10 + rect.left;
-            rect.top = text_pos_[i].y;
-            rect.bottom = rect.top + 20;
-            DrawText(hdc, text_string_[i].c_str(), text_string_[i].length(), &rect, DT_LEFT);
-        }
-        text_pos_.clear();
-        text_string_.clear();
-        d3d_backbuffer_->ReleaseDC(hdc);
-    }
-    
     void set_text_color(uint32 color)
     {
         text_color_ = color;
@@ -114,40 +105,32 @@ public:
 
     void EndFrame(void);
 
-    // TODO 设置变换用的各个矩阵
-    void SetMatrix(MatrixType t, const Matrix44 m);
+    void set_camera(Camera *camera)
+    {
+        camera_ = camera;
+    }
 
-    void SetCamera(Camera *camera);
+    void set_light(Light *light)
+    {
+        light_ = light;
+    }
 
-    // TODO 设置光源
-    void set_light(Light *light);
-
-    void SetLightingMode(ShadingMode t);
-
-    void SetBackfaceCulling(bool flag)
+    void set_backface_culling(bool flag)
     {
         backface_culling_ = flag;
     }
 
-    // TODO 计算光照
-    void Lighting(void);
+    void FlushText(void);
 
     // 绘制三角形
     void DrawPrimitive(Primitive *primitive);
 
-    void SetFlat(bool flag)
-    {
-        flat_ = flag;
-    }
-
-    void draw_line(Point p0, Point p1, uint32 c);
-
-    void SwitchDiffPerspective(void)
+    void switch_diff_perspective(void)
     {
         diff_perspective = !diff_perspective;
     }
 
-    void SwitchTriUpDown(void)
+    void switch_tri_up_down(void)
     {
         tri_up_down_ += 1;
         tri_up_down_ %= 3;
@@ -161,18 +144,18 @@ public:
     void DisplayVertex(void);
     void DisplayTriangle(void);
     void DisplayStatus(void);
-
 private:
-    void SetZbuffer(int x, int y, float v)
+    void set_one_over_z_buffer(int x, int y, float v)
     {
-        z_buffer_[y * width_ + x] = v;
+        one_over_z_buffer_[y * width_ + x] = v;
     }
 
-    float GetZbuffer(int x, int y)
+    float get_one_over_z_buffer(int x, int y)
     {
-        return z_buffer_[y * width_ + x];
+        return one_over_z_buffer_[y * width_ + x];
     }
-
+    // TODO 计算光照
+    void Lighting(void);
     // TODO 变换物体坐标至视图空间 *
     void ModelViewTransform(const Matrix44 &model_view);
     // TODO 透视投影 *
@@ -202,13 +185,15 @@ private:
     int pitch_;
     // 指向backbufer内容
     uint32 *buffer_;
-    // z-buffer
-    float *z_buffer_;
+    // 1/z-buffer
+    // 填充值分布在[1, 0)之间，数值越大，像素点越近
+    float *one_over_z_buffer_;
     HFONT font_;
     
     Camera *camera_;
     Light *light_;
     Vector3 light_pos_;
+    Material *mat_;
 
     RendPrimitive rend_primitive_;
     std::vector<Triangle> triangles_;
@@ -218,6 +203,7 @@ private:
     uint32 text_color_;
 
     Texture2D *texture_;
+    Texture2D *bumpmap_;
     bool flat_;
     bool diff_perspective;
     int tri_up_down_;

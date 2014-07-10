@@ -270,7 +270,7 @@ public:
         }
     }
 
-    float Magnitude(void)
+    float Magnitude(void) const
     {
         return sqrtf(x * x + y * y + z * z);
     }

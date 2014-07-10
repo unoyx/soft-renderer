@@ -86,6 +86,7 @@ void get_primitive(PrimitiveType t, Primitive *pri)
         for (int i = 0; i < 18; ++i)
         {
             primitive.colors[i] = Vector4(1.0f, 1.0, 1.0, 1.0);
+            primitive.normals[i] = Vector3(0, 1, 0);
         }
         primitive.positions[0] = Vector3(0, 0, -1);
         primitive.positions[1] = Vector3(0, 1, 0);
