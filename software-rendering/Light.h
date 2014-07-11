@@ -22,9 +22,9 @@ public:
         ambient = Vector4(r, g, b, 1.0f);
     }
 
-    void set_specular(float r, float g, float b)
+    void set_specular(float r, float g, float b, float w)
     {
-        specular = Vector4(r, g, b, 1.0f);
+        specular = Vector4(r, g, b, w);
     }
 
     Vector3 position;

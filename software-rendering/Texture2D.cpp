@@ -112,7 +112,7 @@ bool Texture2D::Lock(void)
         Logger::GtLogError("lock texture failed");
         return false;
     }
-    pitch_ = rect.Pitch / 4;
+    pitch_ = rect.Pitch;
     data_ = static_cast<uint32 *>(rect.pBits);
     is_locked_ = true;
     return true;
@@ -150,15 +150,18 @@ uint32 Texture2D::GetData(int x, int y)
         return 0;
     }
     
-    uint32 c = data_[y * pitch_ + x];
+    uint32 *d = static_cast<uint32*>(data_);
+    uint32 c = d[y * pitch_ / 4 + x];
     if (format_ == D3DFMT_A8R8G8B8)
     {
         return c;
     }
-    if (format_ == D3DFMT_X8R8G8B8)
+    else if (format_ == D3DFMT_X8R8G8B8)
     {
         return (c | (0xFF << 24));
-    } else 
+    } 
+
+    else 
     {
         return 0;
     }
@@ -211,17 +214,41 @@ Vector4 Texture2D::GetDataUV(float u, float v)
     return Vector4();
 }
 
+uint8 Texture2D::GetDumpData(int x, int y)
+{
+    if (!is_loaded_ || !is_locked_)
+    {
+        Logger::GtLogError("can't get data from texture without loaded or locked: %s", filename_.c_str());
+        return 0;
+    }
+    if (x < 0 || x > width_ || y < 0 || y >= height_)
+    {
+        Logger::GtLogError("access texture is out of range");
+        assert(0);
+        return 0;
+    }
+
+    if (format_ == D3DFMT_L8)
+    {
+        uint8 *d = static_cast<uint8*>(data_);
+        uint8 c = d[y * pitch_ + x];
+        return c;
+    }
+    return 0;
+}
+
 Vector4 Texture2D::GetDataVector4(int x, int y)
 {
-    int idx = static_cast<int>(y) * pitch_ + static_cast<int>(x);
-    uint32 d = data_[idx];
+    int idx = static_cast<int>(y) * pitch_ / 4 + static_cast<int>(x);
+    uint32 *d = static_cast<uint32*>(data_);
+    uint32 c = d[idx];
     if (format_ == D3DFMT_A8R8G8B8)
     {
-        return ARGB32_to_vector4(d);
+        return ARGB32_to_vector4(c);
     }
     if (format_ == D3DFMT_X8R8G8B8)
     {
-        return ARGB32_to_vector4(d | (0xFF << 24));
+        return ARGB32_to_vector4(c | (0xFF << 24));
     }
     assert(0);
     return Vector4();

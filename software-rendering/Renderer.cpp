@@ -487,7 +487,7 @@ void Renderer::Lighting(void)
             rend_primitive_.vertexs[i].color = color;
         }
     }
-    else if (kPhong)
+    else if (shading_mode_ == kPhong)
     {
         for (int i = 0; i < rend_primitive_.size; ++i)
         {
@@ -792,21 +792,24 @@ void Renderer::DiffTriangle(Triangle *tri)
         // 差值计算中点
         RendVertex m;
         float k =  (p1.y - p0.y) / (p2.y - p0.y);
-        m.position = p0 + k * (p2 - p0);
+        m.position = lerp(p0, p2, k);
         if (diff_perspective)
         {
-            float div = (1 - k) * (1 / tri->v[0].position.w) + k * (1 / tri->v[2].position.w);
+            float div = lerp((1 / tri->v[0].position.w), (1 / tri->v[2].position.w), k);
             m.position.w = 1.0f / div;
-            m.color = ((1 - k) * (tri->v[0].color / tri->v[0].position.w) + k * (tri->v[2].color / tri->v[2].position.w)) / div;
-            m.uv = ((1 - k) * (tri->v[0].uv / tri->v[0].position.w) + k * (tri->v[2].uv / tri->v[2].position.w)) / div;
+            m.color = lerp((tri->v[0].color / tri->v[0].position.w), (tri->v[2].color / tri->v[2].position.w), k) / div;
+            m.uv = lerp((tri->v[0].uv / tri->v[0].position.w), (tri->v[2].uv / tri->v[2].position.w), k) / div;
+            m.normal = lerp((tri->v[0].normal / tri->v[0].position.w), (tri->v[2].normal / tri->v[2].position.w), k) / div;
+            m.global_pos = lerp((tri->v[0].global_pos / tri->v[0].position.w), (tri->v[2].global_pos / tri->v[2].position.w), k) / div;
         }
         else
         {
-            m.color = tri->v[0].color + k * (tri->v[2].color - tri->v[0].color);
-            m.uv = tri->v[0].uv + k * (tri->v[2].uv - tri->v[0].uv);
+            m.color = lerp(tri->v[0].color, tri->v[2].color, k);
+            m.uv = lerp(tri->v[0].uv, tri->v[2].uv, k);
+            m.normal = lerp(tri->v[0].normal, tri->v[2].normal, k);
+            m.global_pos = lerp(tri->v[0].global_pos, tri->v[2].global_pos, k);
         }
 
-//        m.normal = 
         // 朝左的三角形
         if (p1.x < m.position.x)
         {
@@ -900,7 +903,18 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
     
     int bumpmap_width = 0;
     int bumpmap_height = 0;
-    if (bumpmap_)
+    float s1 = v1.uv.u - v0.uv.u;
+    float s2 = v2.uv.u - v0.uv.u;
+    float t1 = v1.uv.v - v0.uv.v;
+    float t2 = v2.uv.v - v0.uv.v;
+    float div = s1 * t2 - s2 * t1;
+    Vector3 Q1 = v1.position.GetVector3() - v0.position.GetVector3();
+    Vector3 Q2 = v2.position.GetVector3() - v0.position.GetVector3();
+    Vector3 B = (s2 * Q1 - s1 * Q2) / div;
+    B.SetNormalize();
+    Vector3 T = (t2 * Q1 - t1 * Q2) / div;
+    T.SetNormalize();
+    if (bumpmap_ && shading_mode_ == kPhong)
     {
         bumpmap_width = bumpmap_->get_width();
         bumpmap_height = bumpmap_->get_height();
@@ -934,7 +948,7 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
         }
 
         // floor x_end
-        for (; x < min_t((int)x_end, width_); ++x,
+        for (; x < min_t((int)(x_end), width_); ++x,
                                               one_over_z += done_over_z,
                                               c += dc,
                                               uv += duv,
@@ -952,12 +966,11 @@ void Renderer::DiffTriangleUp(const RendVertex &v0, const RendVertex &v1, const 
             {
                 if (bumpmap_)
                 {
-                    int x = uv.x * (width_ - 3) + 1;
-                    int y = uv.y * (height_ - 3) + 1;
-                    int off_x = bumpmap_->GetData(x + 1, y) - bumpmap_->GetData(x - 1, y);
-                    int off_y = bumpmap_->GetData(x, y + 1) - bumpmap_->GetData(y, y - 1);
-                    normal.x += off_x;
-                    normal.y += off_y;
+                    int x = uv.x * (bumpmap_width - 3) + 1;
+                    int y = uv.y * (bumpmap_height - 3) + 1;
+//                    uint8 off_x = bumpmap_->GetDumpData(x + 1, y) - bumpmap_->GetDumpData(x - 1, y);
+//                    uint8 off_y = bumpmap_->GetDumpData(x, y + 1) - bumpmap_->GetDumpData(y, y - 1);
+//                    normal += (off_x / 255.0f) * B + (off_y / 255.0f) * T;
                 }
                 // Phong着色时，c每次重新计算
                 c = Shading(pos, normal, *mat_, *light_);
@@ -1103,7 +1116,7 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
             pos += dpos * (-x_begin);
             x = 0;
         }
-        for (; x < min_t((int)x_end, width_); ++x,
+        for (; x < min_t((int)(x_end), width_); ++x,
                                               one_over_z += done_over_z,
                                               c += dc,
                                               uv_over_z += duv_over_z,
@@ -1120,12 +1133,12 @@ void Renderer::DiffTriangleDown(const RendVertex &v0, const RendVertex &v1, cons
             {
                 if (bumpmap_)
                 {
-                    int x = uv.x * (width_ - 3) + 1;
-                    int y = uv.y * (height_ - 3) + 1;
-                    int off_x = bumpmap_->GetData(x + 1, y) - bumpmap_->GetData(x - 1, y);
-                    int off_y = bumpmap_->GetData(x, y + 1) - bumpmap_->GetData(y, y - 1);
-                    normal.x += off_x;
-                    normal.y += off_y;
+//                    int x = uv.x * (bumpmap_width - 3) + 1;
+//                    int y = uv.y * (bumpmap_height - 3) + 1;
+//                    uint8 off_x = bumpmap_->GetDumpData(x + 1, y) - bumpmap_->GetDumpData(x - 1, y);
+//                    uint8 off_y = bumpmap_->GetDumpData(x, y + 1) - bumpmap_->GetDumpData(y, y - 1);
+//                    normal.x += (off_x / 255.0f);
+//                    normal.y += (off_y / 255.0f);
                 }
 
                 c = Shading(pos, normal, *mat_, *light_);

@@ -58,4 +58,5 @@ private:
     Light light_;
     Primitive primitive_;
     Texture2D texture_;
+    Texture2D bumpmap_;
 };

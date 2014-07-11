@@ -84,6 +84,7 @@ public:
 
     uint32 GetData(int x, int y);
     Vector4 GetDataUV(float u, float v);
+    uint8 GetDumpData(int x, int y);
 
     int get_width(void)
     {
@@ -127,7 +128,7 @@ private:
     int height_;
     D3DFORMAT format_;
     int pitch_;
-    uint32 *data_;
+    void *data_;
     bool is_loaded_;
     bool is_locked_;
     FilteringType filtering_;

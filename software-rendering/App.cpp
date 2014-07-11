@@ -8,6 +8,7 @@ App::App()
     ,width_(0)
     ,height_(0)
     ,texture_(nullptr)
+    ,bumpmap_(nullptr)
 {
 }
 
@@ -77,11 +78,11 @@ HWND App::Initialize(HINSTANCE inst, int width, int height)
     light_.set_position(0, 0, -1);
     light_.set_ambient(0.2f, 0.2f, 0.2f);
     light_.set_diffuse(0.7f, 0.7f, 0.7f);
-    light_.set_specular(0.7f, 0.7f, 0.7f);
+    light_.set_specular(0.7f, 0.7f, 0.7f, 0.6f);
    
     light_.attenuation0 = 0.2f;
-    light_.attenuation1 = 0.01f;
-    light_.attenuation2 = 0.02f;
+    light_.attenuation1 = 0.1f;
+    light_.attenuation2 = 0.08f;
     renderer_.set_light(&light_);
 
     texture_ = renderer_.CreateTexture2D();
@@ -100,6 +101,23 @@ HWND App::Initialize(HINSTANCE inst, int width, int height)
     ret = texture_.Lock();
     assert(ret);
     renderer_.set_texture(&texture_);
+
+    bumpmap_ = renderer_.CreateTexture2D();
+    ret = bumpmap_.Load("D:\\src\\msvc\\software-rendering\\Debug\\bump.jpg");
+    if (!ret)
+    {
+        int len = GetCurrentDirectory(0, nullptr);
+        char *buf = new char[len];
+        GetCurrentDirectory(len, buf);
+        string path(buf);
+        delete[] buf;
+        path += ".\\bump.jpg";
+        ret = bumpmap_.Load(path.c_str());
+    }
+    assert(ret);
+    ret = bumpmap_.Lock();
+    assert(ret);
+    renderer_.set_bumpmap(&bumpmap_);
 
     return wnd_;
 }
