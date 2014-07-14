@@ -78,6 +78,7 @@ public:
     }
 
     bool Load(string filename);
+    bool Load(string filename, IDirect3DDevice9 *device);
     void UnLoad(void);
     bool Lock(void);
     void UnLock(void);

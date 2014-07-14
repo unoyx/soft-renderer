@@ -86,7 +86,8 @@ HWND App::Initialize(HINSTANCE inst, int width, int height)
     renderer_.set_light(&light_);
 
     texture_ = renderer_.CreateTexture2D();
-    bool ret = texture_.Load("D:\\src\\msvc\\software-rendering\\Debug\\tex2.jpg");
+    bool ret = texture_.Load("C:\\src\\git\\soft-renderer\\Debug\\tex2.jpg");
+
     if (!ret)
     {
         int len = GetCurrentDirectory(0, nullptr);
@@ -102,22 +103,24 @@ HWND App::Initialize(HINSTANCE inst, int width, int height)
     assert(ret);
     renderer_.set_texture(&texture_);
 
-    bumpmap_ = renderer_.CreateTexture2D();
-    ret = bumpmap_.Load("D:\\src\\msvc\\software-rendering\\Debug\\bump.jpg");
-    if (!ret)
-    {
-        int len = GetCurrentDirectory(0, nullptr);
-        char *buf = new char[len];
-        GetCurrentDirectory(len, buf);
-        string path(buf);
-        delete[] buf;
-        path += ".\\bump.jpg";
-        ret = bumpmap_.Load(path.c_str());
-    }
-    assert(ret);
-    ret = bumpmap_.Lock();
-    assert(ret);
-    renderer_.set_bumpmap(&bumpmap_);
+    //bumpmap_ = renderer_.CreateTexture2D();
+    //ret = bumpmap_.Load("D:\\src\\msvc\\software-rendering\\Debug\\bump.jpg");
+    //if (!ret)
+    //{
+    //    int len = GetCurrentDirectory(0, nullptr);
+    //    char *buf = new char[len];
+    //    GetCurrentDirectory(len, buf);
+    //    string path(buf);
+    //    delete[] buf;
+    //    path += ".\\bump.jpg";
+    //    ret = bumpmap_.Load(path.c_str());
+    //}
+    //assert(ret);
+    //ret = bumpmap_.Lock();
+    //assert(ret);
+    //renderer_.set_bumpmap(&bumpmap_);
+
+    scene_.LoadFromXFile("C:\\src\\git\\soft-renderer\\res\\x\\tube.X", renderer_.get_device());
 
     return wnd_;
 }
@@ -288,7 +291,9 @@ void App::Update(void)
     mat.specular = Vector4(0.6, 0.8, 0.6, 1);
     primitive.material = &mat;
 
-    renderer_.DrawPrimitive(&primitive);
+//    renderer_.DrawPrimitive(&primitive);
+
+    scene_.Update(&renderer_);
     
     renderer_.DisplayStatus();
 //    renderer_.DisplayTriangle();

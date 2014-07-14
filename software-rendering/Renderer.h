@@ -141,6 +141,11 @@ public:
         shading_mode_ = mode;
     }
 
+    IDirect3DDevice9 *get_device(void)
+    {
+        return d3d_device_;
+    }
+
     void DisplayVertex(void);
     void DisplayTriangle(void);
     void DisplayStatus(void);

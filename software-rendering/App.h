@@ -23,6 +23,7 @@
 #include "Primitive.h"
 #include "Texture2D.h"
 #include "Light.h"
+#include "Scene.h"
 
 //
 // DemoApp class declaration
@@ -59,4 +60,5 @@ private:
     Primitive primitive_;
     Texture2D texture_;
     Texture2D bumpmap_;
+    Scene scene_;
 };

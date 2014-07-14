@@ -30,6 +30,11 @@ Texture2D::~Texture2D(void)
 
 bool Texture2D::Load(string filename)
 {
+    return Load(filename, device_);
+}
+
+bool Texture2D::Load(string filename, IDirect3DDevice9 *device)
+{
     if (is_locked_ || is_loaded_)
     {
         assert(0);
@@ -38,7 +43,7 @@ bool Texture2D::Load(string filename)
 
     IDirect3DTexture9 *texture = nullptr;
     D3DXIMAGE_INFO info = {0};
-    HRESULT hr = D3DXCreateTextureFromFileExA(device_, 
+    HRESULT hr = D3DXCreateTextureFromFileExA(device, 
                                               filename.c_str(),
                                               D3DX_DEFAULT,
                                               D3DX_DEFAULT,
